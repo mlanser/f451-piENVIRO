@@ -8,7 +8,7 @@ the Adafruit IO service.
 
 To launch this application from terminal:
 
-    $ nohup python -u pienviro.py > pienviro.out &
+    $ nohup python -u enviromon.py > enviromon.out &
 
 This will start the application in the background and it will keep running even after 
 terminal window is closed. Any output will be redirected to the 'pienviro.out' file.    
