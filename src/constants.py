@@ -1,7 +1,7 @@
-"""Global constants for f451 Labs piF451 application.
+"""Global constants for f451 Labs piENVIRO application.
 
 This module holds all global constants used within the components of 
-the f451 Labs piF451 application. Some of the constants are used as 
+the f451 Labs piENVIRO application. Some of the constants are used as 
 keyword equivalents for attributes listed in the `settings.toml` file.
 """
 

@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""f451 Labs piF451 application.
+"""f451 Labs piENVIRO application.
 
-This application is designed for the f451 Labs piF451 device which is also equipped with 
+This application is designed for the f451 Labs piENVIRO device which is also equipped with 
 a SenseHat add-on. The object is to continously read environment data (e.g. temperature, 
 barometric pressure, and humidity from the SenseHat sensors and then upload the data to 
 the Adafruit IO service.
 
 To launch this application from terminal:
 
-    $ nohup python -u pif451.py > pif451.out &
+    $ nohup python -u pienviro.py > pienviro.out &
 
 This will start the application in the background and it will keep running even after 
-terminal window is closed. Any output will be redirected to the 'pif451.out' file.    
+terminal window is closed. Any output will be redirected to the 'pienviro.out' file.    
 """
 
 import time
@@ -276,8 +276,8 @@ EMPTY_Q = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 COLORS  = [const.RGB_BLUE, const.RGB_GREEN, const.RGB_YELLOW, const.RGB_RED]
 
 LOGLVL = "ERROR"
-LOGFILE = "f451-piF451.log"
-LOGNAME = "f451-piF451"
+LOGFILE = "f451-piENVIRO.log"
+LOGNAME = "f451-piENVIRO"
 
 
 # =========================================================
@@ -461,23 +461,23 @@ if __name__ == '__main__':
     ioThrottle = get_setting(config, const.KWD_THROTTLE, const.DEF_THROTTLE)
     
     # Initialize app context instance
-    piF451 = Device(
+    piENVIRO = Device(
         SenseHat(), 
         Client(ioUser, ioKey), 
-        logging.getLogger("f451-piF451"),
+        logging.getLogger("f451-piENVIRO"),
         config
     )
 
-    piF451.displRotation = get_setting(config, const.KWD_ROTATION, const.DEF_ROTATION)
-    piF451.displMode = get_setting(config, const.KWD_DISPLAY, const.DISPL_SPARKLE)
-    piF451.displProgress = convert_to_bool(get_setting(config, const.KWD_PROGRESS, const.STATUS_ON))
-    piF451.displSleep = get_setting(config, const.KWD_SLEEP, const.DEF_SLEEP)
+    piENVIRO.displRotation = get_setting(config, const.KWD_ROTATION, const.DEF_ROTATION)
+    piENVIRO.displMode = get_setting(config, const.KWD_DISPLAY, const.DISPL_SPARKLE)
+    piENVIRO.displProgress = convert_to_bool(get_setting(config, const.KWD_PROGRESS, const.STATUS_ON))
+    piENVIRO.displSleep = get_setting(config, const.KWD_SLEEP, const.DEF_SLEEP)
 
     # Initialize logger
     logFile = get_setting(config, const.KWD_LOG_FILE)
     logFileFP = appDir.parent.joinpath(logFile) if logFile else None
 
-    piF451.init_logger(
+    piENVIRO.init_logger(
         get_setting(config, const.KWD_LOG_LEVEL, const.LOG_INFO),
         logFileFP
     )
@@ -488,26 +488,26 @@ if __name__ == '__main__':
     humidQ = deque(EMPTY_Q, maxlen=const.LED_MAX_COL) # Humidity queue
 
     # Initialize SenseHat and Adafruit IO clients
-    piF451.init_SenseHat()
+    piENVIRO.init_SenseHat()
 
     try:
-        tempsFeed = piF451.get_feed_info(const.KWD_FEED_TEMPS)
-        pressFeed = piF451.get_feed_info(const.KWD_FEED_PRESS)
-        humidFeed = piF451.get_feed_info(const.KWD_FEED_HUMID)
+        tempsFeed = piENVIRO.get_feed_info(const.KWD_FEED_TEMPS)
+        pressFeed = piENVIRO.get_feed_info(const.KWD_FEED_PRESS)
+        humidFeed = piENVIRO.get_feed_info(const.KWD_FEED_HUMID)
 
     except RequestError as e:
-        piF451.log(logging.ERROR, (f"Application terminated due to REQUEST ERROR: {e}"))
-        piF451.reset_LED()
+        piENVIRO.log(logging.ERROR, (f"Application terminated due to REQUEST ERROR: {e}"))
+        piENVIRO.reset_LED()
         sys.exit(1)
 
     # -- Main application loop --
     delayCounter = maxDelay = ioDelay       # Ensure that we upload first reading
-    piF451.sleepCounter = piF451.displSleep   # Reset counter for screen blanking
-    piF451.log(logging.INFO, "-- START Data Logging --")
+    piENVIRO.sleepCounter = piENVIRO.displSleep   # Reset counter for screen blanking
+    piENVIRO.log(logging.INFO, "-- START Data Logging --")
 
     while not EXIT_NOW:
         # We check the sensors each time we loop through ...
-        tempC, press, humid = piF451.get_sensor_data()
+        tempC, press, humid = piENVIRO.get_sensor_data()
 
         # ... and add the data to the queues
         tempsQ.append(tempC)
@@ -515,26 +515,26 @@ if __name__ == '__main__':
         humidQ.append(humid)
 
         # Check 'sleepCounter' before we display anything
-        if piF451.sleepCounter == 1:
-            piF451.blank_LED()       # Need to blank screen once
-        elif piF451.sleepCounter > 1:
-            if piF451.displMode == const.DISPL_TEMP:
-                piF451.update_LED(tempsQ, const.MIN_TEMP, const.MAX_TEMP)
-            elif piF451.displMode == const.DISPL_PRESS:    
-                piF451.update_LED(pressQ, const.MIN_PRESS, const.MAX_PRESS)
-            elif piF451.displMode == const.DISPL_HUMID:    
-                piF451.update_LED(humidQ, const.MIN_HUMID, const.MAX_HUMID)
-            elif piF451.displMode == const.DISPL_SPARKLE:    
-                piF451.sparkle_LED()
+        if piENVIRO.sleepCounter == 1:
+            piENVIRO.blank_LED()       # Need to blank screen once
+        elif piENVIRO.sleepCounter > 1:
+            if piENVIRO.displMode == const.DISPL_TEMP:
+                piENVIRO.update_LED(tempsQ, const.MIN_TEMP, const.MAX_TEMP)
+            elif piENVIRO.displMode == const.DISPL_PRESS:    
+                piENVIRO.update_LED(pressQ, const.MIN_PRESS, const.MAX_PRESS)
+            elif piENVIRO.displMode == const.DISPL_HUMID:    
+                piENVIRO.update_LED(humidQ, const.MIN_HUMID, const.MAX_HUMID)
+            elif piENVIRO.displMode == const.DISPL_SPARKLE:    
+                piENVIRO.sparkle_LED()
             else:    
-                piF451.blank_LED()
+                piENVIRO.blank_LED()
 
-            if piF451.displProgress:
-                piF451.update_LED_progress(delayCounter, maxDelay)    
+            if piENVIRO.displProgress:
+                piENVIRO.update_LED_progress(delayCounter, maxDelay)    
 
         # Update sleep counter for screen blanking as needed
-        if piF451.sleepCounter > 0:    
-            piF451.sleepCounter -= 1
+        if piENVIRO.sleepCounter > 0:    
+            piENVIRO.sleepCounter -= 1
 
         # Is it time to upload data?
         if delayCounter < maxDelay:
@@ -542,14 +542,14 @@ if __name__ == '__main__':
         else:
             try:
                 asyncio.run(send_all_sensor_data(
-                    piF451,
+                    piENVIRO,
                     {"data": tempC, "feed": tempsFeed},
                     {"data": press, "feed": pressFeed},
                     {"data": humid, "feed": humidFeed},
                 ))
 
             except RequestError as e:
-                piF451.log(logging.ERROR, f"Application terminated due to REQUEST ERROR: {e}")
+                piENVIRO.log(logging.ERROR, f"Application terminated due to REQUEST ERROR: {e}")
                 raise
 
             except ThrottlingError as e:
@@ -559,7 +559,7 @@ if __name__ == '__main__':
             else:
                 # Reset 'maxDelay' back to normal 'ioDelay' on successful upload
                 maxDelay = ioDelay
-                piF451.log(logging.INFO, f"Uploaded: TEMP: {tempC} - PRESS: {press} - HUMID: {humid}")
+                piENVIRO.log(logging.INFO, f"Uploaded: TEMP: {tempC} - PRESS: {press} - HUMID: {humid}")
 
             finally:
                 # Reset counter even on failure
@@ -569,5 +569,5 @@ if __name__ == '__main__':
         time.sleep(ioWait)
 
     # A bit of clean-up before we exit
-    piF451.log(logging.INFO, "-- END Data Logging --")
-    piF451.reset_LED()
+    piENVIRO.log(logging.INFO, "-- END Data Logging --")
+    piENVIRO.reset_LED()
