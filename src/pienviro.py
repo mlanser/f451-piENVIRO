@@ -105,9 +105,9 @@ class Device:
         self.displSleep = get_setting(config, const.KWD_SLEEP, const.DEF_SLEEP)
 
         bus = SMBus(1)
-        self.bme280 = BME280(i2c_dev=bus)                   # BME280 temperature, pressure, humidity sensor
+        self.BME280 = BME280(i2c_dev=bus)                   # BME280 temperature, pressure, humidity sensor
 
-        self.pms5003 = PMS5003()                            # PMS5003 particulate sensor
+        self.PMS5003 = PMS5003()                            # PMS5003 particulate sensor
         self.LCD = self._init_LCD(config)                   # ST7735 0.96" 160x80 LCD
         self.serialNum = self._get_serial_num()             # RaspberryPi serial number
 

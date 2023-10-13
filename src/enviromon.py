@@ -39,7 +39,7 @@ except ModuleNotFoundError:
 import ST7735
 import time
 import colorsys
-from bme280 import BME280
+# from bme280 import BME280
 from pms5003 import PMS5003, ReadTimeoutError
 from subprocess import PIPE, Popen, check_output
 from PIL import Image, ImageDraw, ImageFont
@@ -326,14 +326,12 @@ if __name__ == '__main__':
     """)
 
     piEnviro.log_info(""" """)
-    bus = SMBus(1)
 
-    # Create BME280 instance
-    bme280 = BME280(i2c_dev=bus)
-
-
-    # Create PMS5003 instance
-    pms5003 = PMS5003()
+    # bus = SMBus(1)
+    # # Create BME280 instance
+    # bme280 = BME280(i2c_dev=bus)
+    # # Create PMS5003 instance
+    # pms5003 = PMS5003()
 
     # Create a values dict to store the data
     variables = ["temperature",
@@ -462,11 +460,11 @@ if __name__ == '__main__':
             # Smooth out with some averaging to decrease jitter
             cpu_temps = cpu_temps[1:] + [cpu_temp]
             avg_cpu_temp = sum(cpu_temps) / cpu_temps_len
-            raw_temp = bme280.get_temperature()
+            raw_temp = piEnviro.BME280.get_temperature()
             comp_temp = raw_temp - ((avg_cpu_temp - raw_temp) / comp_factor)
 
-            raw_press = bme280.get_pressure()
-            raw_humid = bme280.get_humidity()
+            raw_press = piEnviro.BME280.get_pressure()
+            raw_humid = piEnviro.BME280.get_humidity()
             try:
                 pm_values = pms5003.read()
                 raw_pm25 = pm_values.pm_ug_per_m3(2.5)
@@ -576,6 +574,7 @@ if __name__ == '__main__':
                 display_everything()
         except Exception as e:
             print(e)
+            EXIT_NOW = True
 
     # A bit of clean-up before we exit
     piEnviro.log_info("-- END Data Logging --")
