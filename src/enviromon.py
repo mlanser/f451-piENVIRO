@@ -45,12 +45,12 @@ from PIL import Image, ImageDraw, ImageFont
 from fonts.ttf import RobotoMedium as UserFont
 from enviroplus import gas
 
-try:
-    # Transitional fix for breaking change in LTR559
-    from ltr559 import LTR559
-    ltr559 = LTR559()
-except ImportError:
-    import ltr559
+# try:
+#     # Transitional fix for breaking change in LTR559
+#     from ltr559 import LTR559
+#     ltr559 = LTR559()
+# except ImportError:
+#     import ltr559
 # ????????????????
 
 # =========================================================
@@ -90,30 +90,6 @@ def read_values(comp_temp, mod_press, raw_humid, raw_pm25, raw_pm10):
     return values
 
 
-# Get CPU temperature to use for compensation
-# def get_cpu_temperature():
-#     process = Popen(['vcgencmd', 'measure_temp'],
-#                     stdout=PIPE, universal_newlines=True)
-#     output, _error = process.communicate()
-#     return float(output[output.index('=') + 1:output.rindex("'")])
-
-
-# Get Raspberry Pi serial number to use as ID
-# def get_serial_number():
-#     with open('/proc/cpuinfo', 'r') as f:
-#         for line in f:
-#             if line[0:6] == 'Serial':
-#                 return line.split(":")[1].strip()
-
-
-# Check for Wi-Fi connection
-# def check_wifi():
-#     if check_output(['hostname', '-I']):
-#         return True
-#     else:
-#         return False
-
-
 # Saves the data to be used in the graphs later and prints to the log
 def save_data(idx, data):
     variable = variables[idx]
@@ -151,6 +127,7 @@ def display_text(variable, data, unit):
     # Write the text at the top in black
     draw.text((0, 0), message, font=font, fill=(0, 0, 0))
     piEnviro.LCD.display(img)
+
 
 # Displays all the text on the 0.96" LCD
 def display_everything():
@@ -322,12 +299,6 @@ if __name__ == '__main__':
 
     piEnviro.log_info(""" """)
 
-    # bus = SMBus(1)
-    # # Create BME280 instance
-    # bme280 = BME280(i2c_dev=bus)
-    # # Create PMS5003 instance
-    # pms5003 = PMS5003()
-
     # Create a values dict to store the data
     variables = ["temperature",
                 "pressure",
@@ -459,7 +430,7 @@ if __name__ == '__main__':
 
             # Now comes the combined.py functionality:
             # If the proximity crosses the threshold, toggle the mode
-            proximity = ltr559.get_proximity()
+            proximity = piEnviro.LTR559.get_proximity()
             if proximity > 1500 and curtime - last_page > delay:
                 mode = (mode + 1) % 11
                 last_page = curtime
@@ -483,7 +454,7 @@ if __name__ == '__main__':
                 # variable = "light"
                 unit = "Lux"
                 if proximity < 10:
-                    data = ltr559.get_lux()
+                    data = piEnviro.LTR559.get_lux()
                 else:
                     data = 1
                 display_text(variables[mode], data, unit)
@@ -532,7 +503,7 @@ if __name__ == '__main__':
                 display_everything()
                 save_data(2, raw_humid)
                 if proximity < 10:
-                    raw_data = ltr559.get_lux()
+                    raw_data = piEnviro.LTR559.get_lux()
                 else:
                     raw_data = 1
                 save_data(3, raw_data)
