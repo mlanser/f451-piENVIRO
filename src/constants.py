@@ -45,6 +45,7 @@ DEF_WAIT = 1            # Default delay between sensor reads
 DEF_THROTTLE = 120      # Default additional delay on 'ThrottlingError'
 DEF_ROTATION = 0
 DEF_SLEEP = 600
+DEF_ID_PREFIX = "raspi-"    # Default prefix for ID string
 
 LOG_CRITICAL = "CRITICAL"
 LOG_DEBUG = "DEBUG"
@@ -87,3 +88,9 @@ KWD_LOG_FILE = "LOGFILE"
 KWD_FEED_TEMPS = "FEED_TEMPS"
 KWD_FEED_PRESS = "FEED_PRESS"
 KWD_FEED_HUMID = "FEED_HUMID"
+
+KWD_DATA_TEMPS = "temperature"
+KWD_DATA_PRESS = "pressure"
+KWD_DATA_HUMID = "humidity"
+KWD_DATA_P2 = "P2"
+KWD_DATA_P1 = "P1"

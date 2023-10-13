@@ -16,7 +16,6 @@ terminal window is closed. Any output will be redirected to the 'pienviro.out' f
 
 import time
 import sys
-# import logging
 import asyncio
 import signal
 
@@ -37,11 +36,8 @@ except ModuleNotFoundError:
 
 # ????????????????
 import colorsys
-from pms5003 import ReadTimeoutError
-# from subprocess import PIPE, Popen, check_output
 from PIL import Image, ImageDraw, ImageFont
 from fonts.ttf import RobotoMedium as UserFont
-# from enviroplus import gas
 # ????????????????
 
 
@@ -75,15 +71,19 @@ def debug_config_info(dev):
 # =========================================================
 #              H E L P E R   F U N C T I O N S
 # =========================================================
-# Read values from BME280 and PMS5003 and return as dict
-def read_values(comp_temp, mod_press, raw_humid, raw_pm25, raw_pm10):
-    values = {}
-    values["temperature"] = "{:.2f}".format(comp_temp)
-    values["pressure"] = "{:.2f}".format(mod_press)
-    values["humidity"] = "{:.2f}".format(raw_humid)
-    values["P2"] = str(raw_pm25)
-    values["P1"] = str(raw_pm10)
-    return values
+def parse_data(comp_temp, mod_press, raw_humid, raw_pm25, raw_pm10):
+    """Parse environment data
+
+    Parse data from BME280 and PMS5003 and return as dict
+    """
+    data = {}
+    data[const.KWD_DATA_TEMPS] = "{:.2f}".format(comp_temp)
+    data[const.KWD_DATA_PRESS] = "{:.2f}".format(mod_press)
+    data[const.KWD_DATA_HUMID] = "{:.2f}".format(raw_humid)
+    data[const.KWD_DATA_P2] = str(raw_pm25)
+    data[const.KWD_DATA_P1] = str(raw_pm10)
+
+    return data
 
 
 # Saves the data to be used in the graphs later and prints to the log
@@ -395,32 +395,26 @@ if __name__ == '__main__':
 
             # Calculate these things once, not twice
             cpu_temp = piEnviro.get_CPU_temp()
+
             # Smooth out with some averaging to decrease jitter
             cpu_temps = cpu_temps[1:] + [cpu_temp]
             avg_cpu_temp = sum(cpu_temps) / cpu_temps_len
-            raw_temp = piEnviro.BME280.get_temperature()
+            raw_temp = piEnviro.get_temperature()
             comp_temp = raw_temp - ((avg_cpu_temp - raw_temp) / comp_factor)
 
-            raw_press = piEnviro.BME280.get_pressure()
-            raw_humid = piEnviro.BME280.get_humidity()
+            raw_press = piEnviro.get_pressure()
+            raw_humid = piEnviro.get_humidity()
 
-            try:
-                pm_values = piEnviro.PMS5003.read()
-                raw_pm25 = pm_values.pm_ug_per_m3(2.5)
-                raw_pm10 = pm_values.pm_ug_per_m3(10)
+            pm_values = piEnviro.get_particles()
+            raw_pm25 = pm_values.pm_ug_per_m3(2.5)      # TO DO: fix magic number
+            raw_pm10 = pm_values.pm_ug_per_m3(10)       # TO DO: fix magic number
 
-            except ReadTimeoutError:
-                piEnviro.PMS5003.reset()
-                pm_values = piEnviro.PMS5003.read()
-                raw_pm25 = pm_values.pm_ug_per_m3(2.5)
-                raw_pm10 = pm_values.pm_ug_per_m3(10)
-
-            if time_since_update > 145:
-                values = read_values(comp_temp, raw_press*100,
+            if time_since_update > 145:                 # TO DO: fix magic number
+                values = parse_data(comp_temp, raw_press*100,
                                     raw_humid, raw_pm25, raw_pm10)
-                resp = send_to_luftdaten(values, piEnviro.get_ID("raspi-"))
+                resp = send_to_luftdaten(values, piEnviro.get_ID(const.DEF_ID_PREFIX))
                 update_time = curtime
-                print("Response: {}\n".format("ok" if resp else "failed"))
+                piEnviro.log_info(f"Upload Response: {const.STATUS_SUCCESS if resp else const.STATUS_FAILURE}")
 
             # Now comes the combined.py functionality:
             # If the proximity crosses the threshold, toggle the mode
@@ -518,4 +512,4 @@ if __name__ == '__main__':
 
     # A bit of clean-up before we exit
     piEnviro.log_info("-- END Data Logging --")
-    # piEnviro.display_reset()
+    piEnviro.display_reset()

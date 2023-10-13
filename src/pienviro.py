@@ -105,9 +105,9 @@ class Device:
         self.displSleep = get_setting(config, const.KWD_SLEEP, const.DEF_SLEEP)
 
         bus = SMBus(1)
-        self.BME280 = BME280(i2c_dev=bus)                   # BME280 temperature, pressure, humidity sensor
+        self._BME280 = BME280(i2c_dev=bus)                  # BME280 temperature, pressure, humidity sensor
 
-        self.PMS5003 = PMS5003()                            # PMS5003 particulate sensor
+        self._PMS5003 = PMS5003()                            # PMS5003 particulate sensor
         self.LTR559 = ltr559                                # Proximity sensor
         self.LCD = self._init_LCD(config)                   # ST7735 0.96" 160x80 LCD
         self.GAS = gas                                      # Enviro+
@@ -216,6 +216,29 @@ class Device:
             raise
         
         return info
+
+    def get_pressure(self):
+        """Get air pressure data from BME280 sensor"""
+        return self._BME280.get_pressure()
+
+    def get_humidity(self):
+        """Get humidity data from BME280 sensor"""
+        return self._BME280.get_humidity()
+
+    def get_temperature(self):
+        """Get temperature data from BME280"""
+        return self._BME280.get_temperature()
+
+    def get_particles(self):
+        """Get particle data from PMS5003"""
+        try:
+            data = self._PMS5003.read()
+
+        except pmsReadTimeoutError:
+            self._PMS5003.reset()
+            data = self._PMS5003.read()
+
+        return data
 
     def get_sensor_data(self):
         """
