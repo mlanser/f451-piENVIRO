@@ -484,6 +484,7 @@ if __name__ == '__main__':
                 save_data(0, comp_temp)
                 save_data(1, raw_press)
                 display_everything()
+
                 save_data(2, raw_humid)
                 if proximity < 10:
                     raw_data = piEnviro.LTR559.get_lux()
@@ -491,11 +492,13 @@ if __name__ == '__main__':
                     raw_data = 1
                 save_data(3, raw_data)
                 display_everything()
+
                 gas_data = piEnviro.GAS.read_all()
                 save_data(4, gas_data.oxidising / 1000)
                 save_data(5, gas_data.reducing / 1000)
                 save_data(6, gas_data.nh3 / 1000)
                 display_everything()
+                
                 pms_data = None
                 save_data(7, float(pm_values.pm_ug_per_m3(1.0)))
                 save_data(8, float(raw_pm25))

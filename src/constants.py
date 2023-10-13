@@ -42,8 +42,8 @@ MAX_PRESS = 1260.0
 MIN_HUMID = 0.0         # Min/max sense humidity in %
 MAX_HUMID = 100.0
 
-DEF_LCD_OFFSET_X = 2    # Default horizontal offset for LCD
-DEF_LCD_OFFSET_Y = 2    # Default vertical offseet for LCD 
+DEF_LCD_OFFSET_X = 1    # Default horizontal offset for LCD
+DEF_LCD_OFFSET_Y = 1    # Default vertical offseet for LCD 
 
 DEF_DELAY = 59          # Default delay between uploads
 DEF_WAIT = 1            # Default delay between sensor reads
