@@ -22,10 +22,12 @@ RGB_PROGRESS = (127, 0, 255) # Use for progressbar at bottom of LED
 ROTATE_90 = 90          # Rotate 90 degrees    
 
 DISPL_BLANK = 0         # Display `blank` screen
-DISPL_TEMP = 1          # Show temperature data
-DISPL_PRESS = 2         # Show barometric pressure data
-DISPL_HUMID = 3         # Show humidity data
-DISPL_SPARKLE = 4       # Show random sparkles
+DISPL_SPARKLE = 1       # Show random sparkles
+DISPL_TEMP = 2          # Show temperature data
+DISPL_PRESS = 3         # Show barometric pressure data
+DISPL_HUMID = 4         # Show humidity data
+MIN_DISPL = DISPL_SPARKLE
+MAX_DISPL = DISPL_HUMID
 
 # -- SenseHat --
 MIN_TEMP = 0.0          # Min/max sense degrees in C
@@ -80,6 +82,7 @@ KWD_PROGRESS = "PROGRESS"
 KWD_SLEEP = "SLEEP"
 KWD_LOG_LEVEL = "LOGLVL"
 KWD_LOG_FILE = "LOGFILE"
+
 KWD_FEED_TEMPS = "FEED_TEMPS"
 KWD_FEED_PRESS = "FEED_PRESS"
 KWD_FEED_HUMID = "FEED_HUMID"
