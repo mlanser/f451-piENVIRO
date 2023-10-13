@@ -99,6 +99,8 @@ class Device:
         )
         self.logger = self._init_logger(config, appDir)     # Logger
 
+        self.serialNum = self._get_serial_num()             # RaspberryPi serial number
+        
         self.displRotation = get_setting(config, const.KWD_ROTATION, const.DEF_ROTATION)
         self.displMode = get_setting(config, const.KWD_DISPLAY, const.DISPL_SPARKLE)
         self.displProgress = convert_to_bool(get_setting(config, const.KWD_PROGRESS, const.STATUS_ON))
@@ -107,12 +109,18 @@ class Device:
         bus = SMBus(1)
         self._BME280 = BME280(i2c_dev=bus)                  # BME280 temperature, pressure, humidity sensor
 
-        self._PMS5003 = PMS5003()                            # PMS5003 particulate sensor
+        self._PMS5003 = PMS5003()                           # PMS5003 particulate sensor
         self.LTR559 = ltr559                                # Proximity sensor
         self.LCD = self._init_LCD(config)                   # ST7735 0.96" 160x80 LCD
         self.GAS = gas                                      # Enviro+
-        self.serialNum = self._get_serial_num()             # RaspberryPi serial number
 
+    @property
+    def widthLCD(self):
+        return self.LCD.width
+    
+    @property
+    def heightLCD(self):
+        return self.LCD.height
 
     def _init_logger(self, config, appDir):
         """Initialize Logger

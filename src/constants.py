@@ -19,6 +19,10 @@ RGB_YELLOW = (255, 255, 0)
 RGB_RED = (255, 0, 0)
 RGB_PROGRESS = (127, 0, 255) # Use for progressbar at bottom of LED
 
+FONT_SIZE_SM = 10       # Small font size
+FONT_SIZE_MD = 16       # Medium font size
+FONT_SIZE_LG = 20       # Large font size
+
 ROTATE_90 = 90          # Rotate 90 degrees    
 
 DISPL_BLANK = 0         # Display `blank` screen
@@ -26,6 +30,7 @@ DISPL_SPARKLE = 1       # Show random sparkles
 DISPL_TEMP = 2          # Show temperature data
 DISPL_PRESS = 3         # Show barometric pressure data
 DISPL_HUMID = 4         # Show humidity data
+
 MIN_DISPL = DISPL_SPARKLE
 MAX_DISPL = DISPL_HUMID
 
@@ -37,8 +42,8 @@ MAX_PRESS = 1260.0
 MIN_HUMID = 0.0         # Min/max sense humidity in %
 MAX_HUMID = 100.0
 
-LED_MAX_COL = 8         # sense has an 8x8 LED display
-LED_MAX_ROW = 8
+DEF_LCD_OFFSET_X = 2    # Default horizontal offset for LCD
+DEF_LCD_OFFSET_Y = 2    # Default vertical offseet for LCD 
 
 DEF_DELAY = 59          # Default delay between uploads
 DEF_WAIT = 1            # Default delay between sensor reads

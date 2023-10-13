@@ -71,7 +71,7 @@ def debug_config_info(dev):
 # =========================================================
 #              H E L P E R   F U N C T I O N S
 # =========================================================
-def parse_data(comp_temp, mod_press, raw_humid, raw_pm25, raw_pm10):
+def parse_environ_data(comp_temp, mod_press, raw_humid, raw_pm25, raw_pm10):
     """Parse environment data
 
     Parse data from BME280 and PMS5003 and return as dict
@@ -108,17 +108,17 @@ def display_text(variable, data, unit):
     # Format the variable name and value
     message = "{}: {:.1f} {}".format(variable[:4], data, unit)
     piEnviro.log_info(message)
-    draw.rectangle((0, 0, piEnviro.LCD.width, piEnviro.LCD.height), (255, 255, 255))
+    draw.rectangle((0, 0, piEnviro.widthLCD, piEnviro.heightLCD), (255, 255, 255))
     for i in range(len(colours)):
         # Convert the values to colours from red to blue
         colour = (1.0 - colours[i]) * 0.6
         r, g, b = [int(x * 255.0)
                 for x in colorsys.hsv_to_rgb(colour, 1.0, 1.0)]
         # Draw a 1-pixel wide rectangle of colour
-        draw.rectangle((i, top_pos, i + 1, piEnviro.LCD.height), (r, g, b))
+        draw.rectangle((i, top_pos, i + 1, piEnviro.heightLCD), (r, g, b))
         # Draw a line graph in black
-        line_y = piEnviro.LCD.height - \
-            (top_pos + (colours[i] * (piEnviro.LCD.height - top_pos))) + top_pos
+        line_y = piEnviro.heightLCD - \
+            (top_pos + (colours[i] * (piEnviro.heightLCD - top_pos))) + top_pos
         draw.rectangle((i, line_y, i + 1, line_y + 1), (0, 0, 0))
     # Write the text at the top in black
     draw.text((0, 0), message, font=font, fill=(0, 0, 0))
@@ -127,26 +127,26 @@ def display_text(variable, data, unit):
 
 # Displays all the text on the 0.96" LCD
 def display_everything():
-    draw.rectangle((0, 0, piEnviro.LCD.width, piEnviro.LCD.height), (0, 0, 0))
+    draw.rectangle((0, 0, piEnviro.widthLCD, piEnviro.heightLCD), (0, 0, 0))
     column_count = 2
     row_count = (len(variables) / column_count)
     for i in range(len(variables)):
         variable = variables[i]
         data_value = values_lcd[variable][-1]
         unit = units[i]
-        x = x_offset + ((piEnviro.LCD.width // column_count) * (i // row_count))
-        y = y_offset + ((piEnviro.LCD.height / row_count) * (i % row_count))
+        x = const.DEF_LCD_OFFSET_X + ((piEnviro.widthLCD // column_count) * (i // row_count))
+        y = const.DEF_LCD_OFFSET_Y + ((piEnviro.heightLCD / row_count) * (i % row_count))
         message = "{}: {:.1f} {}".format(variable[:4], data_value, unit)
         lim = limits[i]
         rgb = palette[0]
         for j in range(len(lim)):
             if data_value > lim[j]:
                 rgb = palette[j + 1]
-        draw.text((x, y), message, font=smallfont, fill=rgb)
+        draw.text((x, y), message, font=fontSM, fill=rgb)
     piEnviro.LCD.display(img)
 
 
-def send_to_luftdaten(values, id):
+def upload_environ_data(values, id):
     pm_values = dict(i for i in values.items() if i[0].startswith("P"))
     temp_values = dict(i for i in values.items() if not i[0].startswith("P"))
 
@@ -293,8 +293,6 @@ if __name__ == '__main__':
 
     """)
 
-    piEnviro.log_info(""" """)
-
     # Create a values dict to store the data
     variables = ["temperature",
                 "pressure",
@@ -342,22 +340,20 @@ if __name__ == '__main__':
             [-1, -1, 50, 100]]
 
     # RGB palette for values on the combined screen
-    palette = [(0, 0, 255),           # Dangerously Low
-            (0, 255, 255),         # Low
-            (0, 255, 0),           # Normal
-            (255, 255, 0),         # High
-            (255, 0, 0)]           # Dangerously High
+    palette = [
+        const.RGB_BLUE,     # Dangerously Low
+        (0, 255, 255),      # Low -- TO DO: fix magic number
+        const.RGB_GREEN,    # Normal
+        const.RGB_YELLOW,   # High
+        const.RGB_RED       # Dangerously High
+    ]         
     values_lcd = {}
 
     # Set up canvas and font
-    img = Image.new('RGB', (piEnviro.LCD.width, piEnviro.LCD.height), color=(0, 0, 0))
+    img = Image.new('RGB', (piEnviro.widthLCD, piEnviro.heightLCD), color=const.RGB_BLACK)
     draw = ImageDraw.Draw(img)
-    font_size_small = 10
-    font_size_large = 20
-    font = ImageFont.truetype(UserFont, font_size_large)
-    smallfont = ImageFont.truetype(UserFont, font_size_small)
-    x_offset = 2
-    y_offset = 2
+    font = ImageFont.truetype(UserFont, const.FONT_SIZE_LG)
+    fontSM = ImageFont.truetype(UserFont, const.FONT_SIZE_SM)
     message = ""
 
     # The position of the top bar
@@ -373,15 +369,14 @@ if __name__ == '__main__':
     light = 1
 
     for v in variables:
-        values_lcd[v] = [1] * piEnviro.LCD.width
+        values_lcd[v] = [1] * piEnviro.widthLCD
 
     # Text settings
-    font_size = 16
-    font = ImageFont.truetype(UserFont, font_size)
+    font = ImageFont.truetype(UserFont, const.FONT_SIZE_MD)
     cpu_temps = [piEnviro.get_CPU_temp()] * 5
 
-    time_since_update = 0
-    update_time = time.time()
+    timeSinceUpdate = 0
+    timeUpdate = time.time()
     cpu_temps_len = float(len(cpu_temps))
 
     # Main loop to read data, display, and send to Luftdaten
@@ -390,8 +385,8 @@ if __name__ == '__main__':
         counter += 1
         EXIT_NOW = (counter >= 10)
         try:
-            curtime = time.time()
-            time_since_update = curtime - update_time
+            timeCurrent = time.time()
+            timeSinceUpdate = timeCurrent - timeUpdate
 
             # Calculate these things once, not twice
             cpu_temp = piEnviro.get_CPU_temp()
@@ -409,19 +404,19 @@ if __name__ == '__main__':
             raw_pm25 = pm_values.pm_ug_per_m3(2.5)      # TO DO: fix magic number
             raw_pm10 = pm_values.pm_ug_per_m3(10)       # TO DO: fix magic number
 
-            if time_since_update > 145:                 # TO DO: fix magic number
-                values = parse_data(comp_temp, raw_press*100,
+            if timeSinceUpdate > 145:                 # TO DO: fix magic number
+                values = parse_environ_data(comp_temp, raw_press*100,
                                     raw_humid, raw_pm25, raw_pm10)
-                resp = send_to_luftdaten(values, piEnviro.get_ID(const.DEF_ID_PREFIX))
-                update_time = curtime
+                resp = upload_environ_data(values, piEnviro.get_ID(const.DEF_ID_PREFIX))
+                timeUpdate = timeCurrent
                 piEnviro.log_info(f"Upload Response: {const.STATUS_SUCCESS if resp else const.STATUS_FAILURE}")
 
             # Now comes the combined.py functionality:
             # If the proximity crosses the threshold, toggle the mode
             proximity = piEnviro.LTR559.get_proximity()
-            if proximity > 1500 and curtime - last_page > delay:
+            if proximity > 1500 and timeCurrent - last_page > delay:
                 mode = (mode + 1) % 11
-                last_page = curtime
+                last_page = timeCurrent
             # One mode for each variable
             if mode == 0:
                 # variable = "temperature"
