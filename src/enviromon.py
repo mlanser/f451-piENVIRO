@@ -150,7 +150,7 @@ def display_text(variable, data, unit):
         draw.rectangle((i, line_y, i + 1, line_y + 1), (0, 0, 0))
     # Write the text at the top in black
     draw.text((0, 0), message, font=font, fill=(0, 0, 0))
-    st7735.display(img)
+    piEnviro.LCD.display(img)
 
 # Displays all the text on the 0.96" LCD
 def display_everything():
@@ -170,7 +170,7 @@ def display_everything():
             if data_value > lim[j]:
                 rgb = palette[j + 1]
         draw.text((x, y), message, font=smallfont, fill=rgb)
-    st7735.display(img)
+    piEnviro.LCD.display(img)
 
 
 def send_to_luftdaten(values, id):
