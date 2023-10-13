@@ -110,6 +110,7 @@ class Device:
         self.PMS5003 = PMS5003()                            # PMS5003 particulate sensor
         self.LTR559 = ltr559                                # Proximity sensor
         self.LCD = self._init_LCD(config)                   # ST7735 0.96" 160x80 LCD
+        self.GAS = gas                                      # Enviro+
         self.serialNum = self._get_serial_num()             # RaspberryPi serial number
 
 

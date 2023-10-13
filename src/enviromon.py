@@ -16,7 +16,7 @@ terminal window is closed. Any output will be redirected to the 'pienviro.out' f
 
 import time
 import sys
-import logging
+# import logging
 import asyncio
 import signal
 
@@ -36,22 +36,14 @@ except ModuleNotFoundError:
     import tomli as tomllib
 
 # ????????????????
-# import ST7735
-import time
 import colorsys
 from pms5003 import ReadTimeoutError
-from subprocess import PIPE, Popen, check_output
+# from subprocess import PIPE, Popen, check_output
 from PIL import Image, ImageDraw, ImageFont
 from fonts.ttf import RobotoMedium as UserFont
-from enviroplus import gas
-
-# try:
-#     # Transitional fix for breaking change in LTR559
-#     from ltr559 import LTR559
-#     ltr559 = LTR559()
-# except ImportError:
-#     import ltr559
+# from enviroplus import gas
 # ????????????????
+
 
 # =========================================================
 #          G L O B A L S   A N D   H E L P E R S
@@ -74,6 +66,10 @@ def debug_config_info(dev):
     dev.log_debug(f"IO DEL:      {dev.get_config(const.KWD_DELAY, const.DEF_DELAY)}")
     dev.log_debug(f"IO WAIT:     {dev.get_config(const.KWD_WAIT, const.DEF_WAIT)}")
     dev.log_debug(f"IO THROTTLE: {dev.get_config(const.KWD_THROTTLE, const.DEF_THROTTLE)}")
+
+    # Display Raspberry Pi serial and Wi-Fi status
+    dev.log_debug(f"Raspberry Pi serial: {piEnviro.serialNum}")
+    dev.log_debug(f"Wi-Fi: {(const.STATUS_YES if check_wifi() else const.STATUS_NO)}")
 
 
 # =========================================================
@@ -384,10 +380,6 @@ if __name__ == '__main__':
     font = ImageFont.truetype(UserFont, font_size)
     cpu_temps = [piEnviro.get_CPU_temp()] * 5
 
-    # Display Raspberry Pi serial and Wi-Fi status
-    print("Raspberry Pi serial: {}".format(piEnviro.serialNum))
-    print("Wi-Fi: {}\n".format("connected" if check_wifi() else "disconnected"))
-
     time_since_update = 0
     update_time = time.time()
     cpu_temps_len = float(len(cpu_temps))
@@ -411,10 +403,12 @@ if __name__ == '__main__':
 
             raw_press = piEnviro.BME280.get_pressure()
             raw_humid = piEnviro.BME280.get_humidity()
+
             try:
                 pm_values = piEnviro.PMS5003.read()
                 raw_pm25 = pm_values.pm_ug_per_m3(2.5)
                 raw_pm10 = pm_values.pm_ug_per_m3(10)
+
             except ReadTimeoutError:
                 piEnviro.PMS5003.reset()
                 pm_values = piEnviro.PMS5003.read()
@@ -462,21 +456,21 @@ if __name__ == '__main__':
             if mode == 4:
                 # variable = "oxidised"
                 unit = "kO"
-                data = gas.read_all()
+                data = piEnviro.GAS.read_all()
                 data = data.oxidising / 1000
                 display_text(variables[mode], data, unit)
 
             if mode == 5:
                 # variable = "reduced"
                 unit = "kO"
-                data = gas.read_all()
+                data = piEnviro.GAS.read_all()
                 data = data.reducing / 1000
                 display_text(variables[mode], data, unit)
 
             if mode == 6:
                 # variable = "nh3"
                 unit = "kO"
-                data = gas.read_all()
+                data = piEnviro.GAS.read_all()
                 data = data.nh3 / 1000
                 display_text(variables[mode], data, unit)
 
@@ -508,7 +502,7 @@ if __name__ == '__main__':
                     raw_data = 1
                 save_data(3, raw_data)
                 display_everything()
-                gas_data = gas.read_all()
+                gas_data = piEnviro.GAS.read_all()
                 save_data(4, gas_data.oxidising / 1000)
                 save_data(5, gas_data.reducing / 1000)
                 save_data(6, gas_data.nh3 / 1000)
