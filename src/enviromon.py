@@ -28,7 +28,7 @@ from Adafruit_IO import Client, MQTTClient, RequestError, ThrottlingError
 
 import constants as const
 from pienviro import Device
-from common import exit_now, EXIT_NOW
+from common import exit_now, check_wifi, EXIT_NOW
 
 try:
     import tomllib
@@ -91,27 +91,27 @@ def read_values(comp_temp, mod_press, raw_humid, raw_pm25, raw_pm10):
 
 
 # Get CPU temperature to use for compensation
-def get_cpu_temperature():
-    process = Popen(['vcgencmd', 'measure_temp'],
-                    stdout=PIPE, universal_newlines=True)
-    output, _error = process.communicate()
-    return float(output[output.index('=') + 1:output.rindex("'")])
+# def get_cpu_temperature():
+#     process = Popen(['vcgencmd', 'measure_temp'],
+#                     stdout=PIPE, universal_newlines=True)
+#     output, _error = process.communicate()
+#     return float(output[output.index('=') + 1:output.rindex("'")])
 
 
 # Get Raspberry Pi serial number to use as ID
-def get_serial_number():
-    with open('/proc/cpuinfo', 'r') as f:
-        for line in f:
-            if line[0:6] == 'Serial':
-                return line.split(":")[1].strip()
+# def get_serial_number():
+#     with open('/proc/cpuinfo', 'r') as f:
+#         for line in f:
+#             if line[0:6] == 'Serial':
+#                 return line.split(":")[1].strip()
 
 
 # Check for Wi-Fi connection
-def check_wifi():
-    if check_output(['hostname', '-I']):
-        return True
-    else:
-        return False
+# def check_wifi():
+#     if check_output(['hostname', '-I']):
+#         return True
+#     else:
+#         return False
 
 
 # Saves the data to be used in the graphs later and prints to the log
@@ -382,23 +382,6 @@ if __name__ == '__main__':
             (255, 0, 0)]           # Dangerously High
     values_lcd = {}
 
-
-    # Create ST7735 LCD display class
-    # st7735 = ST7735.ST7735(
-    #     port=0,
-    #     cs=1,
-    #     dc=9,
-    #     backlight=12,
-    #     rotation=270,
-    #     spi_speed_hz=10000000
-    # )
-
-    # # Initialize display
-    # st7735.begin()
-
-    # WIDTH = piEnviro.LCD.width
-    # HEIGHT = piEnviro.LCD.height
-
     # Set up canvas and font
     img = Image.new('RGB', (piEnviro.LCD.width, piEnviro.LCD.height), color=(0, 0, 0))
     draw = ImageDraw.Draw(img)
@@ -416,28 +399,22 @@ if __name__ == '__main__':
     # Compensation factor for temperature
     comp_factor = 1
 
-    # Raspberry Pi ID to send to Luftdaten
-    id = "raspi-" + get_serial_number()
-
-
     # Added for state
     delay = 0.5  # Debounce the proximity tap
     mode = 10     # The starting mode
     last_page = 0
     light = 1
 
-
     for v in variables:
         values_lcd[v] = [1] * piEnviro.LCD.width
-
 
     # Text settings
     font_size = 16
     font = ImageFont.truetype(UserFont, font_size)
-    cpu_temps = [get_cpu_temperature()] * 5
+    cpu_temps = [piEnviro.get_CPU_temp()] * 5
 
     # Display Raspberry Pi serial and Wi-Fi status
-    print("Raspberry Pi serial: {}".format(get_serial_number()))
+    print("Raspberry Pi serial: {}".format(piEnviro.serialNum))
     print("Wi-Fi: {}\n".format("connected" if check_wifi() else "disconnected"))
 
     time_since_update = 0
@@ -454,7 +431,7 @@ if __name__ == '__main__':
             time_since_update = curtime - update_time
 
             # Calculate these things once, not twice
-            cpu_temp = get_cpu_temperature()
+            cpu_temp = piEnviro.get_CPU_temp()
             # Smooth out with some averaging to decrease jitter
             cpu_temps = cpu_temps[1:] + [cpu_temp]
             avg_cpu_temp = sum(cpu_temps) / cpu_temps_len
@@ -476,7 +453,7 @@ if __name__ == '__main__':
             if time_since_update > 145:
                 values = read_values(comp_temp, raw_press*100,
                                     raw_humid, raw_pm25, raw_pm10)
-                resp = send_to_luftdaten(values, id)
+                resp = send_to_luftdaten(values, piEnviro.get_ID("raspi-"))
                 update_time = curtime
                 print("Response: {}\n".format("ok" if resp else "failed"))
 

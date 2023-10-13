@@ -166,6 +166,9 @@ class Device:
         except OSError:
             return default
 
+    def get_ID(self, prefix="", suffix=""):
+        return prefix + self.serialNum + suffix
+
     def get_CPU_temp(self):
         """Get CPU temp
 
