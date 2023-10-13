@@ -41,6 +41,11 @@ class FakeLTR559:
         return random.randint(0, 1500)
 
 
+class FakeSMBus:
+    def __init__(self, *args, **kwargs):
+        self.active = True
+
+
 class FakeBME280:
     def __init__(self, *args, **kwargs):
         self.active = True

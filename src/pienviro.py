@@ -50,7 +50,16 @@ try:
         import ltr559
 except ImportError:
     from mocks.fake_device import FakeLTR559 as ltr559
-     
+
+# Support SMBus
+try:
+    try:
+        from smbus2 import SMBus
+    except ImportError:
+        from smbus import SMBus
+except ImportError:
+    from mocks.fake_device import FakeSMBus as SMBus
+
 # Support temperature/pressure/humidity sensor
 try:
     from bme280 import BME280
@@ -95,9 +104,12 @@ class Device:
         self.displProgress = convert_to_bool(get_setting(config, const.KWD_PROGRESS, const.STATUS_ON))
         self.displSleep = get_setting(config, const.KWD_SLEEP, const.DEF_SLEEP)
 
-        self.bme280 = BME280()                              # BME280 temperature, pressure, humidity sensor
+        bus = SMBus(1)
+        self.bme280 = BME280(i2c_dev=bus)                   # BME280 temperature, pressure, humidity sensor
+
         self.pms5003 = PMS5003()                            # PMS5003 particulate sensor
         self.LCD = self._init_LCD(config)                   # ST7735 0.96" 160x80 LCD
+        self.serialNum = self._get_serial_num()             # RaspberryPi serial number
 
 
     def _init_logger(self, config, appDir):
@@ -140,6 +152,30 @@ class Device:
         st7735.begin()
 
         return st7735
+
+    def _get_serial_num(self, default="n/a"):
+        """Get Raspberry Pi serial number
+        
+        Based on code from Enviro+ example 'luftdaten_combined.py'
+        """
+        try:
+            with open('/proc/cpuinfo', 'r') as f:
+                for line in f:
+                    if line[0:6] == 'Serial':
+                        return line.split(":")[1].strip()
+        except OSError:
+            return default
+
+    def get_CPU_temp(self):
+        """Get CPU temp
+
+        We use this for compensating temperature reads from BME280 sensor.
+
+        Based on code from Enviro+ example 'luftdaten_combined.py'
+        """
+        process = Popen(['vcgencmd', 'measure_temp'], stdout=PIPE, universal_newlines=True)
+        output, _error = process.communicate()
+        return float(output[output.index('=') + 1:output.rindex("'")])
 
     def get_config(self, key, default=None):
         """Get a config value from settings
