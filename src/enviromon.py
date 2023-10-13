@@ -39,17 +39,17 @@ except ModuleNotFoundError:
 import ST7735
 import time
 import colorsys
-# from bme280 import BME280
-from pms5003 import PMS5003, ReadTimeoutError
+from pms5003 import ReadTimeoutError
 from subprocess import PIPE, Popen, check_output
 from PIL import Image, ImageDraw, ImageFont
 from fonts.ttf import RobotoMedium as UserFont
 from enviroplus import gas
 
-try:
-    from smbus2 import SMBus
-except ImportError:
-    from smbus import SMBus
+# try:
+#     from smbus2 import SMBus
+# except ImportError:
+#     from smbus import SMBus
+
 try:
     # Transitional fix for breaking change in LTR559
     from ltr559 import LTR559
@@ -466,12 +466,12 @@ if __name__ == '__main__':
             raw_press = piEnviro.BME280.get_pressure()
             raw_humid = piEnviro.BME280.get_humidity()
             try:
-                pm_values = pms5003.read()
+                pm_values = piEnviro.PMS5003.read()
                 raw_pm25 = pm_values.pm_ug_per_m3(2.5)
                 raw_pm10 = pm_values.pm_ug_per_m3(10)
             except ReadTimeoutError:
-                pms5003.reset()
-                pm_values = pms5003.read()
+                piEnviro.PMS5003.reset()
+                pm_values = piEnviro.PMS5003.read()
                 raw_pm25 = pm_values.pm_ug_per_m3(2.5)
                 raw_pm10 = pm_values.pm_ug_per_m3(10)
 
