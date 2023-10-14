@@ -389,7 +389,7 @@ if __name__ == '__main__':
     counter = 0
     while not EXIT_NOW:
         counter += 1
-        EXIT_NOW = (counter >= 10)
+        EXIT_NOW = (counter >= 200)
         try:
             timeCurrent = time.time()
             timeSinceUpdate = timeCurrent - timeUpdate
