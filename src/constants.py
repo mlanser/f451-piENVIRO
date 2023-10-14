@@ -41,14 +41,6 @@ DISPL_TOP_X = 2         # X/Y ccordinate of top-left corner for LCD content
 DISPL_TOP_Y = 2
 DISPL_TOP_BAR = 25      # Height (in px) of top bar
 
-# -- SenseHat --
-MIN_TEMP = 0.0          # Min/max sense degrees in C
-MAX_TEMP = 65.0
-MIN_PRESS = 260.0       # Min/max sense pressure in hPa
-MAX_PRESS = 1260.0
-MIN_HUMID = 0.0         # Min/max sense humidity in %
-MAX_HUMID = 100.0
-
 DEF_LCD_OFFSET_X = 1    # Default horizontal offset for LCD
 DEF_LCD_OFFSET_Y = 1    # Default vertical offseet for LCD 
 
@@ -110,3 +102,74 @@ KWD_DATA_P1 = "P1"
 KWD_DISPL_TOP_X = "TOP_X"
 KWD_DISPL_TOP_Y = "TOP_Y"
 KWD_DISPL_TOP_BAR = "TOP_BAR"
+
+
+# =========================================================
+#    C O N S T A N T S   F O R   E N V I R O N   D A T A
+# =========================================================
+# RGB color palette for values on combo/text screen
+COLOR_PALETTE = [
+    RGB_BLUE,     # Dangerously Low
+    RGB_CYAN,     # Low
+    RGB_GREEN,    # Normal
+    RGB_YELLOW,   # High
+    RGB_RED       # Dangerously High
+]         
+
+# List of environment data types
+DATA_TYPES = [
+    "temperature",  
+    "pressure",
+    "humidity",
+    "light",
+    "oxidised",
+    "reduced",
+    "nh3",
+    "pm1",
+    "pm25",
+    "pm10"
+]
+
+# List of environment data units
+DATA_UNITS = [
+    "C",
+    "hPa",
+    "%",
+    "Lux",
+    "kO",
+    "kO",
+    "kO",
+    "ug/m3",
+    "ug/m3",
+    "ug/m3"
+]
+
+# Define your own warning limits for environment data
+#
+# The (data) limits definition follows the same order as 
+# the 'DATA_TYPES' list.
+#
+# Example limits explanation for temperature:
+# [4,18,28,35] means:
+#  -273.15 ... 4     -> Dangerously Low
+#        4 ... 18    -> Low
+#       18 ... 28    -> Normal
+#       28 ... 35    -> High
+#       35 ... MAX   -> Dangerously High
+#
+# DISCLAIMER: The limits provided here are just examples and come
+# with NO WARRANTY. The authors of this example code claim
+# NO RESPONSIBILITY if reliance on the following values or this
+# code in general leads to ANY DAMAGES or DEATH.
+DATA_LIMITS = [
+    [4, 18, 25, 35],
+    [250, 650, 1013.25, 1015],
+    [20, 30, 60, 70],
+    [-1, -1, 30000, 100000],
+    [-1, -1, 40, 50],
+    [-1, -1, 450, 550],
+    [-1, -1, 200, 300],
+    [-1, -1, 50, 100],
+    [-1, -1, 50, 100],
+    [-1, -1, 50, 100]
+]

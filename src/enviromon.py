@@ -35,7 +35,7 @@ except ModuleNotFoundError:
     import tomli as tomllib
 
 # ????????????????
-import colorsys
+# import colorsys
 from PIL import Image, ImageDraw, ImageFont
 from fonts.ttf import RobotoMedium as UserFont
 # ????????????????
@@ -44,13 +44,11 @@ from fonts.ttf import RobotoMedium as UserFont
 # =========================================================
 #          G L O B A L S   A N D   H E L P E R S
 # =========================================================
-#         - 0    1    2    3    4    5    6    7 -
-EMPTY_Q = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-COLORS  = [const.RGB_BLUE, const.RGB_GREEN, const.RGB_YELLOW, const.RGB_RED]
-
 LOGLVL = "ERROR"
 LOGFILE = "f451-piF451.log"
 LOGNAME = "f451-piF451"
+
+
 
 def debug_config_info(dev):
     dev.log_debug("-- Config Settings --")
@@ -88,70 +86,49 @@ def parse_environ_data(comp_temp, mod_press, raw_humid, raw_pm25, raw_pm10):
 
 # Saves the data to be used in the graphs later and prints to the log
 def save_data(idx, data):
-    variable = variables[idx]
+    global dataSet
+
+    type = const.DATA_TYPES[idx]
+
     # Maintain length of list
-    values_lcd[variable] = values_lcd[variable][1:] + [data]
-    unit = units[idx]
-    message = "{}: {:.1f} {}".format(variable[:4], data, unit)
+    dataSet[type] = dataSet[type][1:] + [data]
+    unit = const.DATA_UNITS[idx]
+    message = "{}: {:.1f} {}".format(type[:4], data, unit)
     piEnviro.log_info(message)
 
 
 # Displays data and text on the 0.96" LCD
-def display_text(variable, data, unit):
+def display_text(type, data, unit):
+    global dataSet
+
     # Maintain length of list
-    values_lcd[variable] = values_lcd[variable][1:] + [data]
+    dataSet[type] = dataSet[type][1:] + [data]
 
-    piEnviro.display_graph(values_lcd[variable], variable, unit)
-
-    # # Scale the values for the variable between 0 and 1
-    # vmin = min(values_lcd[variable])
-    # vmax = max(values_lcd[variable])
-    # colors = [(v - vmin + 1) / (vmax - vmin + 1)
-    #         for v in values_lcd[variable]]
-    
-    # # Format the variable name and value
-    # message = "{}: {:.1f} {}".format(variable[:4], data, unit)
-    # piEnviro.log_info(message)
-    # draw.rectangle((0, 0, piEnviro.widthLCD, piEnviro.heightLCD), const.RGB_WHITE)
-    
-    # for i in range(len(colors)):
-    #     # Convert the values to colors from red to blue
-    #     colour = (1.0 - colors[i]) * 0.6
-    #     r, g, b = [int(x * 255.0)
-    #             for x in colorsys.hsv_to_rgb(colour, 1.0, 1.0)]
-    
-    #     # Draw a 1-pixel wide rectangle of colour
-    #     draw.rectangle((i, top_pos, i + 1, piEnviro.heightLCD), (r, g, b))
-    
-    #     # Draw a line graph in black
-    #     line_y = piEnviro.heightLCD - \
-    #         (top_pos + (colors[i] * (piEnviro.heightLCD - top_pos))) + top_pos
-    #     draw.rectangle((i, line_y, i + 1, line_y + 1), const.RGB_BLACK)
-    
-    # # Write the text at the top in black
-    # draw.text((0, 0), message, font=font, fill=const.RGB_BLACK)
-    # piEnviro.LCD.display(img)
+    piEnviro.display_as_graph(dataSet[type], type, unit)
 
 
 # Displays all the text on the 0.96" LCD
 def display_everything():
-    draw.rectangle((0, 0, piEnviro.widthLCD, piEnviro.heightLCD), const.RGB_BLACK)
-    column_count = 2
-    row_count = (len(variables) / column_count)
-    for i in range(len(variables)):
-        variable = variables[i]
-        data_value = values_lcd[variable][-1]
-        unit = units[i]
-        x = const.DEF_LCD_OFFSET_X + ((piEnviro.widthLCD // column_count) * (i // row_count))
-        y = const.DEF_LCD_OFFSET_Y + ((piEnviro.heightLCD / row_count) * (i % row_count))
-        message = "{}: {:.1f} {}".format(variable[:4], data_value, unit)
-        lim = limits[i]
-        rgb = palette[0]
-        for j in range(len(lim)):
-            if data_value > lim[j]:
-                rgb = palette[j + 1]
-        draw.text((x, y), message, font=fontSM, fill=rgb)
-    piEnviro.LCD.display(img)
+    global dataSet
+
+    piEnviro.display_as_text(dataSet)
+    # draw.rectangle((0, 0, piEnviro.widthLCD, piEnviro.heightLCD), const.RGB_BLACK)
+    # column_count = 2
+    # row_count = (len(const.DATA_TYPES) / column_count)
+    # for i in range(len(const.DATA_TYPES)):
+    #     type = const.DATA_TYPES[i]
+    #     data_value = dataSet[type][-1]
+    #     unit = const.DATA_UNITS[i]
+    #     x = const.DEF_LCD_OFFSET_X + ((piEnviro.widthLCD // column_count) * (i // row_count))
+    #     y = const.DEF_LCD_OFFSET_Y + ((piEnviro.heightLCD / row_count) * (i % row_count))
+    #     message = "{}: {:.1f} {}".format(type[:4], data_value, unit)
+    #     lim = const.DATA_LIMITS[i]
+    #     rgb = const.COLOR_PALETTE[0]
+    #     for j in range(len(lim)):
+    #         if data_value > lim[j]:
+    #             rgb = const.COLOR_PALETTE[j + 1]
+    #     draw.text((x, y), message, font=fontSM, fill=rgb)
+    # piEnviro.LCD.display(img)
 
 
 def upload_environ_data(values, id):
@@ -253,6 +230,10 @@ if __name__ == '__main__':
     piEnviro = Device(config, appDir)
     piEnviro.display_init()
 
+    dataSet = {}
+    for v in const.DATA_TYPES:
+        dataSet[v] = [1] * piEnviro.widthLCD
+
     # try:
     #     tempsFeed = piEnviro.get_feed_info(const.KWD_FEED_TEMPS)
     #     pressFeed = piEnviro.get_feed_info(const.KWD_FEED_PRESS)
@@ -302,71 +283,12 @@ if __name__ == '__main__':
 
     """)
 
-    # Create a values dict to store the data
-    variables = ["temperature",
-                "pressure",
-                "humidity",
-                "light",
-                "oxidised",
-                "reduced",
-                "nh3",
-                "pm1",
-                "pm25",
-                "pm10"]
-    units = ["C",
-            "hPa",
-            "%",
-            "Lux",
-            "kO",
-            "kO",
-            "kO",
-            "ug/m3",
-            "ug/m3",
-            "ug/m3"]
-
-    # Define your own warning limits
-    # The limits definition follows the order of the variables array
-    # Example limits explanation for temperature:
-    # [4,18,28,35] means
-    # [-273.15 .. 4] -> Dangerously Low
-    # (4 .. 18]      -> Low
-    # (18 .. 28]     -> Normal
-    # (28 .. 35]     -> High
-    # (35 .. MAX]    -> Dangerously High
-    # DISCLAIMER: The limits provided here are just examples and come
-    # with NO WARRANTY. The authors of this example code claim
-    # NO RESPONSIBILITY if reliance on the following values or this
-    # code in general leads to ANY DAMAGES or DEATH.
-    limits = [[4, 18, 25, 35],
-            [250, 650, 1013.25, 1015],
-            [20, 30, 60, 70],
-            [-1, -1, 30000, 100000],
-            [-1, -1, 40, 50],
-            [-1, -1, 450, 550],
-            [-1, -1, 200, 300],
-            [-1, -1, 50, 100],
-            [-1, -1, 50, 100],
-            [-1, -1, 50, 100]]
-
-    # RGB palette for values on the combined screen
-    palette = [
-        const.RGB_BLUE,     # Dangerously Low
-        const.RGB_CYAN,     # Low
-        const.RGB_GREEN,    # Normal
-        const.RGB_YELLOW,   # High
-        const.RGB_RED       # Dangerously High
-    ]         
-    values_lcd = {}
-
     # Set up canvas and font
-    img = Image.new('RGB', (piEnviro.widthLCD, piEnviro.heightLCD), color=const.RGB_BLACK)
-    draw = ImageDraw.Draw(img)
-    font = ImageFont.truetype(UserFont, const.FONT_SIZE_LG)
-    fontSM = ImageFont.truetype(UserFont, const.FONT_SIZE_SM)
-    message = ""
-
-    # The position of the top bar
-    top_pos = 25
+    # img = Image.new('RGB', (piEnviro.widthLCD, piEnviro.heightLCD), color=const.RGB_BLACK)
+    # draw = ImageDraw.Draw(img)
+    # font = ImageFont.truetype(UserFont, const.FONT_SIZE_LG)
+    # fontSM = ImageFont.truetype(UserFont, const.FONT_SIZE_SM)
+    # message = ""
 
     # Compensation factor for temperature
     comp_factor = 1
@@ -377,11 +299,8 @@ if __name__ == '__main__':
     last_page = 0
     light = 1
 
-    for v in variables:
-        values_lcd[v] = [1] * piEnviro.widthLCD
-
     # Text settings
-    font = ImageFont.truetype(UserFont, const.FONT_SIZE_MD)
+    # font = ImageFont.truetype(UserFont, const.FONT_SIZE_MD)
     cpu_temps = [piEnviro.get_CPU_temp()] * 5
 
     timeSinceUpdate = 0
@@ -426,67 +345,67 @@ if __name__ == '__main__':
             if proximity > 1500 and timeCurrent - last_page > delay:
                 mode = (mode + 1) % 11
                 last_page = timeCurrent
-            # One mode for each variable
+            # One mode for each data type
             if mode == 0:
-                # variable = "temperature"
+                # type = "temperature"
                 unit = "C"
-                display_text(variables[mode], comp_temp, unit)
+                display_text(const.DATA_TYPES[mode], comp_temp, unit)
 
             if mode == 1:
-                # variable = "pressure"
+                # type = "pressure"
                 unit = "hPa"
-                display_text(variables[mode], raw_press, unit)
+                display_text(const.DATA_TYPES[mode], raw_press, unit)
 
             if mode == 2:
-                # variable = "humidity"
+                # type = "humidity"
                 unit = "%"
-                display_text(variables[mode], raw_humid, unit)
+                display_text(const.DATA_TYPES[mode], raw_humid, unit)
 
             if mode == 3:
-                # variable = "light"
+                # type = "light"
                 unit = "Lux"
                 if proximity < 10:
                     data = piEnviro.LTR559.get_lux()
                 else:
                     data = 1
-                display_text(variables[mode], data, unit)
+                display_text(const.DATA_TYPES[mode], data, unit)
 
             if mode == 4:
-                # variable = "oxidised"
+                # type = "oxidised"
                 unit = "kO"
                 data = piEnviro.GAS.read_all()
                 data = data.oxidising / 1000
-                display_text(variables[mode], data, unit)
+                display_text(const.DATA_TYPES[mode], data, unit)
 
             if mode == 5:
-                # variable = "reduced"
+                # type = "reduced"
                 unit = "kO"
                 data = piEnviro.GAS.read_all()
                 data = data.reducing / 1000
-                display_text(variables[mode], data, unit)
+                display_text(const.DATA_TYPES[mode], data, unit)
 
             if mode == 6:
-                # variable = "nh3"
+                # type = "nh3"
                 unit = "kO"
                 data = piEnviro.GAS.read_all()
                 data = data.nh3 / 1000
-                display_text(variables[mode], data, unit)
+                display_text(const.DATA_TYPES[mode], data, unit)
 
             if mode == 7:
-                # variable = "pm1"
+                # type = "pm1"
                 unit = "ug/m3"
                 data = float(pm_values.pm_ug_per_m3(1.0))
-                display_text(variables[mode], data, unit)
+                display_text(const.DATA_TYPES[mode], data, unit)
 
             if mode == 8:
-                # variable = "pm25"
+                # type = "pm25"
                 unit = "ug/m3"
-                display_text(variables[mode], float(raw_pm25), unit)
+                display_text(const.DATA_TYPES[mode], float(raw_pm25), unit)
 
             if mode == 9:
-                # variable = "pm10"
+                # type = "pm10"
                 unit = "ug/m3"
-                display_text(variables[mode], float(raw_pm10), unit)
+                display_text(const.DATA_TYPES[mode], float(raw_pm10), unit)
 
             if mode == 10:
                 # Everything on one screen

@@ -327,7 +327,7 @@ class Device:
         # else:    
         #     self.enviro.clear()
 
-    def display_graph(self, data, dataType, dataUnit):
+    def display_as_graph(self, data, dataType, dataUnit):
         """Display graph and data point as text label
         
         This method will redraw the entire LCD
@@ -364,9 +364,46 @@ class Device:
             self.displDraw.rectangle((i, line_y, i + 1, line_y + 1), const.RGB_BLACK)
         
         # Write the text at the top in black
-        self.displDraw.text((0, 0), message, font= self.displFontLG, fill=const.RGB_BLACK)
+        self.displDraw.text((0, 0), message, font=self.displFontLG, fill=const.RGB_BLACK)
         self.LCD.display(self.displImg)
     
+    def display_as_text(self, data):
+        """Display graph and data point as text label
+        
+        This method will redraw the entire LCD
+
+        Args:
+            data:
+                'list' with one value for each column of pixels on LCD
+            dataType:
+                'str' with data type name (e.g. 'temperature', etc.)
+            dataUnit:
+                'str' with data unit (e.g. 'C' for Celsius, etc.)
+        """
+        self.displDraw.rectangle((0, 0, self.LCD.width, self.LCD.height), const.RGB_BLACK)
+        cols = 2
+        rows = (len(const.DATA_TYPES) / cols)
+
+        for i in range(len(const.DATA_TYPES)):
+            type = const.DATA_TYPES[i]
+            val = data[type][-1]
+            unit = const.DATA_UNITS[i]
+            
+            x = const.DEF_LCD_OFFSET_X + ((self.LCD.width // cols) * (i // rows))
+            y = const.DEF_LCD_OFFSET_Y + ((self.LCD.height / rows) * (i % rows))
+            
+            message = "{}: {:.1f} {}".format(type[:4], val, unit)
+            
+            lim = const.DATA_LIMITS[i]
+            rgb = const.COLOR_PALETTE[0]
+
+            for j in range(len(lim)):
+                if val > lim[j]:
+                    rgb = const.COLOR_PALETTE[j + 1]
+            self.displDraw.text((x, y), message, font=self.displFontSM, fill=rgb)
+        
+        self.LCD.display(self.displImg)
+
     def display_progress(self, inVal, maxVal=100):
         """Update progressbar on bottom row of LED
 
