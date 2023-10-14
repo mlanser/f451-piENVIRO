@@ -251,6 +251,7 @@ if __name__ == '__main__':
     # Initialize device instance which includes the logger, 
     # Enviro+, and Adafruit IO client
     piEnviro = Device(config, appDir)
+    piEnviro.display_init()
 
     # try:
     #     tempsFeed = piEnviro.get_feed_info(const.KWD_FEED_TEMPS)
