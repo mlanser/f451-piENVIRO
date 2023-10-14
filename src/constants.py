@@ -39,6 +39,7 @@ MAX_DISPL = DISPL_HUMID
 
 DISPL_TOP_X = 2         # X/Y ccordinate of top-left corner for LCD content
 DISPL_TOP_Y = 2
+DISPL_TOP_BAR = 25      # Height (in px) of top bar
 
 # -- SenseHat --
 MIN_TEMP = 0.0          # Min/max sense degrees in C
@@ -108,3 +109,4 @@ KWD_DATA_P1 = "P1"
 
 KWD_DISPL_TOP_X = "TOP_X"
 KWD_DISPL_TOP_Y = "TOP_Y"
+KWD_DISPL_TOP_BAR = "TOP_BAR"

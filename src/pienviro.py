@@ -30,7 +30,7 @@ except ModuleNotFoundError:
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
-from fonts.ttf import RobotoMedium as UserFont
+from fonts.ttf import RobotoMedium
 
 from subprocess import PIPE, Popen
 
@@ -101,21 +101,30 @@ class Device:
 
         self.serialNum = self._get_serial_num()             # RaspberryPi serial number
         
-        self.displRotation = get_setting(config, const.KWD_ROTATION, const.DEF_ROTATION)
-        self.displMode = get_setting(config, const.KWD_DISPLAY, const.DISPL_SPARKLE)
-        self.displProgress = convert_to_bool(get_setting(config, const.KWD_PROGRESS, const.STATUS_ON))
-        self.displSleep = get_setting(config, const.KWD_SLEEP, const.DEF_SLEEP)
-
-        self.displTopX = get_setting(config, const.KWD_DISPL_TOP_X, const.DEF_SLEEP)
-        self.displTopY = get_setting(config, const.KWD_DISPL_TOP_Y, const.DEF_SLEEP)
-
         bus = SMBus(1)
         self._BME280 = BME280(i2c_dev=bus)                  # BME280 temperature, pressure, humidity sensor
 
         self._PMS5003 = PMS5003()                           # PMS5003 particulate sensor
         self.LTR559 = ltr559                                # Proximity sensor
-        self.LCD = self._init_LCD(config)                   # ST7735 0.96" 160x80 LCD
         self.GAS = gas                                      # Enviro+
+
+        # Initialize LCD and canvas
+        self.LCD = self._init_LCD(config)                   # ST7735 0.96" 160x80 LCD
+
+        self.displRotation = get_setting(config, const.KWD_ROTATION, const.DEF_ROTATION)
+        self.displMode = get_setting(config, const.KWD_DISPLAY, const.DISPL_SPARKLE)
+        self.displProgress = convert_to_bool(get_setting(config, const.KWD_PROGRESS, const.STATUS_ON))
+        self.displSleep = get_setting(config, const.KWD_SLEEP, const.DEF_SLEEP)
+
+        self.displTopX = get_setting(config, const.KWD_DISPL_TOP_X, const.DISPL_TOP_X)
+        self.displTopY = get_setting(config, const.KWD_DISPL_TOP_Y, const.DISPL_TOP_Y)
+        self.displTopBar = get_setting(config, const.KWD_DISPL_TOP_BAR, const.DISPL_TOP_BAR)
+
+        self.displImg = None
+        self.displDraw = None
+        self.displFontLG = None
+        self.displFontSM = None
+        self.displData = {}
 
     @property
     def widthLCD(self):
@@ -280,6 +289,12 @@ class Device:
             """Wrapper of Logger.debug()"""
             self.logger.debug(msg)
 
+    def display_init(self):
+        self.displImg = Image.new('RGB', (self.LCD.width, self.LCD.height), color=const.RGB_BLACK)
+        self.displDraw = ImageDraw.Draw(self.displImg)
+        self.displFontLG = ImageFont.truetype(RobotoMedium, const.FONT_SIZE_LG)
+        self.displFontSM = ImageFont.truetype(RobotoMedium, const.FONT_SIZE_SM)
+
     def display_on(self):
         self.LCD.display_on()
 
@@ -294,8 +309,7 @@ class Device:
 
     def display_reset(self):
         """Reset and clear LED"""
-        self.display_blank()
-        self.display_off()
+        self.display_init()
 
     def display_sparkle(self):
         """Show random sparkles on LED"""
@@ -313,25 +327,45 @@ class Device:
         # else:    
         #     self.enviro.clear()
 
-    def display_update(self, data, inMin, inMax):
-        """
-        Update all pixels on SenseHat 8x8 LED with new color values
+    def display_graph(self, data, dataType, dataUnit):
+        """Display graph and data point as text label
+        
+        This method will redraw the entire LCD
 
         Args:
             data:
-                'list' with one value for each column of pixels on LED
-            inMin:
-                Min value of range for (sensor) data
-            inMax:
-                Max value of range for (sensor) data
+                'list' with one value for each column of pixels on LCD
+            dataType:
+                'str' with data type name (e.g. 'temperature', etc.)
+            dataUnit:
+                'str' with data unit (e.g. 'C' for Celsius, etc.)
         """
-        pass
-        # normalized = [round(num_to_range(val, inMin, inMax, 0, const.LED_MAX_ROW)) for val in data]
-        # maxCol = min(const.LED_MAX_COL, len(normalized))
-
-        # pixels = [const.RGB_BLACK if row < (const.LED_MAX_ROW - normalized[col]) else convert_to_rgb(data[col], inMin, inMax, COLORS) for row in range(const.LED_MAX_ROW) for col in range(maxCol)]
-        # # self.enviro.set_rotation(self.displRotation)
-        # self.enviro.set_pixels(pixels)
+        # Scale values in data set between 0 and 1
+        vmin = min(data)
+        vmax = max(data)
+        colors = [(v - vmin + 1) / (vmax - vmin + 1) for v in data]
+        
+        # Format data type name and value
+        message = "{}: {:.1f} {}".format(dataType[:4], data[-1], dataUnit)
+        self.log_info(message)
+        self.displDraw.rectangle((0, 0, self.LCD.width, self.LCD.height), const.RGB_WHITE)
+        
+        for i in range(len(colors)):
+            # Convert the values to colors from red to blue
+            color = (1.0 - colors[i]) * 0.6
+            r, g, b = [int(x * 255.0)
+                    for x in colorsys.hsv_to_rgb(color, 1.0, 1.0)]
+        
+            # Draw a 1-pixel wide rectangle of given color
+            self.displDraw.rectangle((i, self.displTopBar, i + 1, self.LCD.height), (r, g, b))
+        
+            # Draw and overlay a line graph in black
+            line_y = self.LCD.height - (self.displTopBar + (colors[i] * (self.LCD.height - self.displTopBar))) + self.displTopBar
+            self.displDraw.rectangle((i, line_y, i + 1, line_y + 1), const.RGB_BLACK)
+        
+        # Write the text at the top in black
+        self.displDraw.text((0, 0), message, font= self.displFontLG, fill=const.RGB_BLACK)
+        self.LCD.display(self.displImg)
     
     def display_progress(self, inVal, maxVal=100):
         """Update progressbar on bottom row of LED
