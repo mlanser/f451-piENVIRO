@@ -105,3 +105,6 @@ KWD_DATA_PRESS = "pressure"
 KWD_DATA_HUMID = "humidity"
 KWD_DATA_P2 = "P2"
 KWD_DATA_P1 = "P1"
+
+KWD_DISPL_TOP_X = "TOP_X"
+KWD_DISPL_TOP_Y = "TOP_Y"
