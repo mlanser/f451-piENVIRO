@@ -100,26 +100,32 @@ def save_data(idx, data):
 def display_text(variable, data, unit):
     # Maintain length of list
     values_lcd[variable] = values_lcd[variable][1:] + [data]
+
     # Scale the values for the variable between 0 and 1
     vmin = min(values_lcd[variable])
     vmax = max(values_lcd[variable])
-    colours = [(v - vmin + 1) / (vmax - vmin + 1)
+    colors = [(v - vmin + 1) / (vmax - vmin + 1)
             for v in values_lcd[variable]]
+    
     # Format the variable name and value
     message = "{}: {:.1f} {}".format(variable[:4], data, unit)
     piEnviro.log_info(message)
     draw.rectangle((0, 0, piEnviro.widthLCD, piEnviro.heightLCD), const.RGB_WHITE)
-    for i in range(len(colours)):
-        # Convert the values to colours from red to blue
-        colour = (1.0 - colours[i]) * 0.6
+    
+    for i in range(len(colors)):
+        # Convert the values to colors from red to blue
+        colour = (1.0 - colors[i]) * 0.6
         r, g, b = [int(x * 255.0)
                 for x in colorsys.hsv_to_rgb(colour, 1.0, 1.0)]
+    
         # Draw a 1-pixel wide rectangle of colour
         draw.rectangle((i, top_pos, i + 1, piEnviro.heightLCD), (r, g, b))
+    
         # Draw a line graph in black
         line_y = piEnviro.heightLCD - \
-            (top_pos + (colours[i] * (piEnviro.heightLCD - top_pos))) + top_pos
+            (top_pos + (colors[i] * (piEnviro.heightLCD - top_pos))) + top_pos
         draw.rectangle((i, line_y, i + 1, line_y + 1), const.RGB_BLACK)
+    
     # Write the text at the top in black
     draw.text((0, 0), message, font=font, fill=const.RGB_BLACK)
     piEnviro.LCD.display(img)
@@ -364,7 +370,7 @@ if __name__ == '__main__':
 
     # Added for state
     delay = 0.5  # Debounce the proximity tap
-    mode = 10     # The starting mode
+    mode = 0     # The starting mode
     last_page = 0
     light = 1
 
