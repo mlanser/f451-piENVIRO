@@ -295,7 +295,7 @@ if __name__ == '__main__':
 
     # Added for state
     delay = 0.5  # Debounce the proximity tap
-    mode = 0     # The starting mode
+    mode = 10     # The starting mode
     last_page = 0
     light = 1
 
