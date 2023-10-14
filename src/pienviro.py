@@ -106,6 +106,9 @@ class Device:
         self.displProgress = convert_to_bool(get_setting(config, const.KWD_PROGRESS, const.STATUS_ON))
         self.displSleep = get_setting(config, const.KWD_SLEEP, const.DEF_SLEEP)
 
+        self.displTopX = get_setting(config, const.KWD_DISPL_TOP_X, const.DEF_SLEEP)
+        self.displTopY = get_setting(config, const.KWD_DISPL_TOP_Y, const.DEF_SLEEP)
+
         bus = SMBus(1)
         self._BME280 = BME280(i2c_dev=bus)                  # BME280 temperature, pressure, humidity sensor
 
@@ -277,6 +280,12 @@ class Device:
             """Wrapper of Logger.debug()"""
             self.logger.debug(msg)
 
+    def display_on(self):
+        self.LCD.display_on()
+
+    def display_off(self):
+        self.LCD.display_off()
+        
     def display_blank(self):
         """Show clear/blank LED"""
         img = Image.new('RGB', (self.LCD.width, self.LCD.height), color=(0, 0, 0))
@@ -286,6 +295,7 @@ class Device:
     def display_reset(self):
         """Reset and clear LED"""
         self.display_blank()
+        self.display_off()
 
     def display_sparkle(self):
         """Show random sparkles on LED"""

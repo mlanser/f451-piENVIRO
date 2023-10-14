@@ -108,7 +108,7 @@ def display_text(variable, data, unit):
     # Format the variable name and value
     message = "{}: {:.1f} {}".format(variable[:4], data, unit)
     piEnviro.log_info(message)
-    draw.rectangle((0, 0, piEnviro.widthLCD, piEnviro.heightLCD), (255, 255, 255))
+    draw.rectangle((0, 0, piEnviro.widthLCD, piEnviro.heightLCD), const.RGB_WHITE)
     for i in range(len(colours)):
         # Convert the values to colours from red to blue
         colour = (1.0 - colours[i]) * 0.6
@@ -119,15 +119,15 @@ def display_text(variable, data, unit):
         # Draw a line graph in black
         line_y = piEnviro.heightLCD - \
             (top_pos + (colours[i] * (piEnviro.heightLCD - top_pos))) + top_pos
-        draw.rectangle((i, line_y, i + 1, line_y + 1), (0, 0, 0))
+        draw.rectangle((i, line_y, i + 1, line_y + 1), const.RGB_BLACK)
     # Write the text at the top in black
-    draw.text((0, 0), message, font=font, fill=(0, 0, 0))
+    draw.text((0, 0), message, font=font, fill=const.RGB_BLACK)
     piEnviro.LCD.display(img)
 
 
 # Displays all the text on the 0.96" LCD
 def display_everything():
-    draw.rectangle((0, 0, piEnviro.widthLCD, piEnviro.heightLCD), (0, 0, 0))
+    draw.rectangle((0, 0, piEnviro.widthLCD, piEnviro.heightLCD), const.RGB_BLACK)
     column_count = 2
     row_count = (len(variables) / column_count)
     for i in range(len(variables)):
@@ -342,7 +342,7 @@ if __name__ == '__main__':
     # RGB palette for values on the combined screen
     palette = [
         const.RGB_BLUE,     # Dangerously Low
-        (0, 255, 255),      # Low -- TO DO: fix magic number
+        const.RGB_CYAN,     # Low
         const.RGB_GREEN,    # Normal
         const.RGB_YELLOW,   # High
         const.RGB_RED       # Dangerously High
@@ -498,7 +498,7 @@ if __name__ == '__main__':
                 save_data(5, gas_data.reducing / 1000)
                 save_data(6, gas_data.nh3 / 1000)
                 display_everything()
-                
+
                 pms_data = None
                 save_data(7, float(pm_values.pm_ug_per_m3(1.0)))
                 save_data(8, float(raw_pm25))

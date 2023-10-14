@@ -12,11 +12,14 @@ DELIM_STD = "|"
 DELIM_VAL = ":"
 EMPTY_STR = ""
 
-RGB_BLACK = (0, 0, 0)   # RGB values for black (pixel off)
+RGB_BLACK = (0, 0, 0)
+RGB_WHITE = (255, 255, 255)
 RGB_BLUE = (0, 0, 255)
+RGB_CYAN = (0, 255, 255)
 RGB_GREEN = (0, 255, 0)
 RGB_YELLOW = (255, 255, 0)
 RGB_RED = (255, 0, 0)
+
 RGB_PROGRESS = (127, 0, 255) # Use for progressbar at bottom of LED
 
 FONT_SIZE_SM = 10       # Small font size
@@ -33,6 +36,9 @@ DISPL_HUMID = 4         # Show humidity data
 
 MIN_DISPL = DISPL_SPARKLE
 MAX_DISPL = DISPL_HUMID
+
+DISPL_TOP_X = 2         # X/Y ccordinate of top-left corner for LCD content
+DISPL_TOP_Y = 2
 
 # -- SenseHat --
 MIN_TEMP = 0.0          # Min/max sense degrees in C
