@@ -34,12 +34,6 @@ try:
 except ModuleNotFoundError:
     import tomli as tomllib
 
-# ????????????????
-# import colorsys
-from PIL import Image, ImageDraw, ImageFont
-from fonts.ttf import RobotoMedium as UserFont
-# ????????????????
-
 
 # =========================================================
 #          G L O B A L S   A N D   H E L P E R S
@@ -47,7 +41,6 @@ from fonts.ttf import RobotoMedium as UserFont
 LOGLVL = "ERROR"
 LOGFILE = "f451-piF451.log"
 LOGNAME = "f451-piF451"
-
 
 
 def debug_config_info(dev):
@@ -69,17 +62,17 @@ def debug_config_info(dev):
 # =========================================================
 #              H E L P E R   F U N C T I O N S
 # =========================================================
-def parse_environ_data(comp_temp, mod_press, raw_humid, raw_pm25, raw_pm10):
+def parse_environ_data(temp, press, humid, pm25, pm10):
     """Parse environment data
 
     Parse data from BME280 and PMS5003 and return as dict
     """
     data = {}
-    data[const.KWD_DATA_TEMPS] = "{:.2f}".format(comp_temp)
-    data[const.KWD_DATA_PRESS] = "{:.2f}".format(mod_press)
-    data[const.KWD_DATA_HUMID] = "{:.2f}".format(raw_humid)
-    data[const.KWD_DATA_P2] = str(raw_pm25)
-    data[const.KWD_DATA_P1] = str(raw_pm10)
+    data[const.KWD_DATA_TEMPS] = "{:.2f}".format(temp)
+    data[const.KWD_DATA_PRESS] = "{:.2f}".format(press)
+    data[const.KWD_DATA_HUMID] = "{:.2f}".format(humid)
+    data[const.KWD_DATA_P2] = str(pm25)
+    data[const.KWD_DATA_P1] = str(pm10)
 
     return data
 
@@ -112,23 +105,6 @@ def display_everything():
     global dataSet
 
     piEnviro.display_as_text(dataSet)
-    # draw.rectangle((0, 0, piEnviro.widthLCD, piEnviro.heightLCD), const.RGB_BLACK)
-    # column_count = 2
-    # row_count = (len(const.DATA_TYPES) / column_count)
-    # for i in range(len(const.DATA_TYPES)):
-    #     type = const.DATA_TYPES[i]
-    #     data_value = dataSet[type][-1]
-    #     unit = const.DATA_UNITS[i]
-    #     x = const.DEF_LCD_OFFSET_X + ((piEnviro.widthLCD // column_count) * (i // row_count))
-    #     y = const.DEF_LCD_OFFSET_Y + ((piEnviro.heightLCD / row_count) * (i % row_count))
-    #     message = "{}: {:.1f} {}".format(type[:4], data_value, unit)
-    #     lim = const.DATA_LIMITS[i]
-    #     rgb = const.COLOR_PALETTE[0]
-    #     for j in range(len(lim)):
-    #         if data_value > lim[j]:
-    #             rgb = const.COLOR_PALETTE[j + 1]
-    #     draw.text((x, y), message, font=fontSM, fill=rgb)
-    # piEnviro.LCD.display(img)
 
 
 def upload_environ_data(values, id):
@@ -220,19 +196,10 @@ if __name__ == '__main__':
     except tomllib.TOMLDecodeError:
         sys.exit("Invalid 'settings.toml' file")      
 
-    # Initialize core data queues
-    # tempsQ = deque(EMPTY_Q, maxlen=const.LED_MAX_COL) # Temperature queue
-    # pressQ = deque(EMPTY_Q, maxlen=const.LED_MAX_COL) # Pressure queue
-    # humidQ = deque(EMPTY_Q, maxlen=const.LED_MAX_COL) # Humidity queue
-
     # Initialize device instance which includes the logger, 
     # Enviro+, and Adafruit IO client
     piEnviro = Device(config, appDir)
     piEnviro.display_init()
-
-    dataSet = {}
-    for v in const.DATA_TYPES:
-        dataSet[v] = [1] * piEnviro.widthLCD
 
     # try:
     #     tempsFeed = piEnviro.get_feed_info(const.KWD_FEED_TEMPS)
@@ -244,14 +211,26 @@ if __name__ == '__main__':
     #     piEnviro.display_reset()
     #     sys.exit(1)
 
-    # -- Main application loop --
     # Get core settings
     ioDelay = piEnviro.get_config(const.KWD_DELAY, const.DEF_DELAY)
     ioWait = piEnviro.get_config(const.KWD_WAIT, const.DEF_WAIT)
     ioThrottle = piEnviro.get_config(const.KWD_THROTTLE, const.DEF_THROTTLE)
-    
+
+    cpuTempsQMaxLen = piEnviro.get_config(const.KWD_MAX_LEN_CPU_TEMPS, const.MAX_LEN_CPU_TEMPS)
+    cpuTempsQ = deque([piEnviro.get_CPU_temp()] * cpuTempsQMaxLen, maxlen=cpuTempsQMaxLen)
+
+    tempCompFactor = piEnviro.get_config(const.KWD_TEMP_COMP, const.DEF_TEMP_COMP_FACTOR)
+
     delayCounter = maxDelay = ioDelay       # Ensure that we upload first reading
     piEnviro.sleepCounter = piEnviro.displSleep   # Reset counter for screen blanking
+
+    # Initialize core data queues
+    # tempsQ = deque(EMPTY_Q, maxlen=const.LED_MAX_COL) # Temperature queue
+    # pressQ = deque(EMPTY_Q, maxlen=const.LED_MAX_COL) # Pressure queue
+    # humidQ = deque(EMPTY_Q, maxlen=const.LED_MAX_COL) # Humidity queue
+    dataSet = {}
+    for v in const.DATA_TYPES:
+        dataSet[v] = [1] * piEnviro.widthLCD
 
     debug_config_info(piEnviro)
     piEnviro.log_info("-- START Data Logging --")
@@ -283,29 +262,14 @@ if __name__ == '__main__':
 
     """)
 
-    # Set up canvas and font
-    # img = Image.new('RGB', (piEnviro.widthLCD, piEnviro.heightLCD), color=const.RGB_BLACK)
-    # draw = ImageDraw.Draw(img)
-    # font = ImageFont.truetype(UserFont, const.FONT_SIZE_LG)
-    # fontSM = ImageFont.truetype(UserFont, const.FONT_SIZE_SM)
-    # message = ""
-
-    # Compensation factor for temperature
-    comp_factor = 1
-
+    # -- Main application loop --
     # Added for state
     delay = 0.5  # Debounce the proximity tap
-    mode = 10     # The starting mode
     last_page = 0
     light = 1
 
-    # Text settings
-    # font = ImageFont.truetype(UserFont, const.FONT_SIZE_MD)
-    cpu_temps = [piEnviro.get_CPU_temp()] * 5
-
     timeSinceUpdate = 0
     timeUpdate = time.time()
-    cpu_temps_len = float(len(cpu_temps))
 
     # Main loop to read data, display, and send to Luftdaten
     counter = 0
@@ -316,106 +280,86 @@ if __name__ == '__main__':
             timeCurrent = time.time()
             timeSinceUpdate = timeCurrent - timeUpdate
 
-            # Calculate these things once, not twice
-            cpu_temp = piEnviro.get_CPU_temp()
+            # Get current CPU temp, add to queue, and calculate new average
+            cpuTempsQ.append(piEnviro.get_CPU_temp())
+            cpuTempAvg = sum(cpuTempsQ) / float(cpuTempsQMaxLen)
 
             # Smooth out with some averaging to decrease jitter
-            cpu_temps = cpu_temps[1:] + [cpu_temp]
-            avg_cpu_temp = sum(cpu_temps) / cpu_temps_len
-            raw_temp = piEnviro.get_temperature()
-            comp_temp = raw_temp - ((avg_cpu_temp - raw_temp) / comp_factor)
+            tempRaw = piEnviro.get_temperature()
+            tempComp = tempRaw - ((cpuTempAvg - tempRaw) / tempCompFactor)
 
-            raw_press = piEnviro.get_pressure()
-            raw_humid = piEnviro.get_humidity()
+            pressRaw = piEnviro.get_pressure()
+            humidRaw = piEnviro.get_humidity()
 
-            pm_values = piEnviro.get_particles()
-            raw_pm25 = pm_values.pm_ug_per_m3(2.5)      # TO DO: fix magic number
-            raw_pm10 = pm_values.pm_ug_per_m3(10)       # TO DO: fix magic number
+            pmData = piEnviro.get_particles()
+            pm25Raw = pmData.pm_ug_per_m3(2.5)      # TO DO: fix magic number
+            pm10Raw = pmData.pm_ug_per_m3(10)       # TO DO: fix magic number
 
-            if timeSinceUpdate > 145:                 # TO DO: fix magic number
-                values = parse_environ_data(comp_temp, raw_press*100,
-                                    raw_humid, raw_pm25, raw_pm10)
-                resp = upload_environ_data(values, piEnviro.get_ID(const.DEF_ID_PREFIX))
+            if timeSinceUpdate > 145:                   # TO DO: fix magic number
+                resp = upload_environ_data(
+                    parse_environ_data(tempComp, pressRaw * 100, humidRaw, pm25Raw, pm10Raw), 
+                    piEnviro.get_ID(const.DEF_ID_PREFIX)
+                )
                 timeUpdate = timeCurrent
                 piEnviro.log_info(f"Upload Response: {const.STATUS_SUCCESS if resp else const.STATUS_FAILURE}")
 
-            # Now comes the combined.py functionality:
-            # If the proximity crosses the threshold, toggle the mode
-            proximity = piEnviro.LTR559.get_proximity()
+            # If the proximity crosses the threshold, toggle the display mode
+            proximity = piEnviro.get_proximity()
+
             if proximity > 1500 and timeCurrent - last_page > delay:
-                mode = (mode + 1) % 11
+                piEnviro.displMode = (piEnviro.displMode + 1) % (const.MAX_DISPL + 1)
                 last_page = timeCurrent
-            # One mode for each data type
-            if mode == 0:
-                # type = "temperature"
-                unit = "C"
-                display_text(const.DATA_TYPES[mode], comp_temp, unit)
 
-            if mode == 1:
-                # type = "pressure"
-                unit = "hPa"
-                display_text(const.DATA_TYPES[mode], raw_press, unit)
+            # Check display mode. There's one mode for each data type
+            if piEnviro.displMode == 0:     # type = "temperature"
+                display_text(const.DATA_TYPES[piEnviro.displMode], tempComp, const.DATA_UNITS[piEnviro.displMode])
 
-            if mode == 2:
-                # type = "humidity"
-                unit = "%"
-                display_text(const.DATA_TYPES[mode], raw_humid, unit)
+            elif piEnviro.displMode == 1:   # type = "pressure"
+                display_text(const.DATA_TYPES[piEnviro.displMode], pressRaw, const.DATA_UNITS[piEnviro.displMode])
 
-            if mode == 3:
-                # type = "light"
-                unit = "Lux"
+            elif piEnviro.displMode == 2:   # type = "humidity"
+                display_text(const.DATA_TYPES[piEnviro.displMode], humidRaw, const.DATA_UNITS[piEnviro.displMode])
+
+            elif piEnviro.displMode == 3:   # type = "light"
                 if proximity < 10:
-                    data = piEnviro.LTR559.get_lux()
+                    data = piEnviro.get_lux()
                 else:
                     data = 1
-                display_text(const.DATA_TYPES[mode], data, unit)
+                display_text(const.DATA_TYPES[piEnviro.displMode], data, const.DATA_UNITS[piEnviro.displMode])
 
-            if mode == 4:
-                # type = "oxidised"
-                unit = "kO"
+            elif piEnviro.displMode == 4:   # type = "oxidized"
                 data = piEnviro.GAS.read_all()
                 data = data.oxidising / 1000
-                display_text(const.DATA_TYPES[mode], data, unit)
+                display_text(const.DATA_TYPES[piEnviro.displMode], data, const.DATA_UNITS[piEnviro.displMode])
 
-            if mode == 5:
-                # type = "reduced"
-                unit = "kO"
+            elif piEnviro.displMode == 5:   # type = "reduced"
                 data = piEnviro.GAS.read_all()
                 data = data.reducing / 1000
-                display_text(const.DATA_TYPES[mode], data, unit)
+                display_text(const.DATA_TYPES[piEnviro.displMode], data, const.DATA_UNITS[piEnviro.displMode])
 
-            if mode == 6:
-                # type = "nh3"
-                unit = "kO"
+            elif piEnviro.displMode == 6:   # type = "nh3"
                 data = piEnviro.GAS.read_all()
                 data = data.nh3 / 1000
-                display_text(const.DATA_TYPES[mode], data, unit)
+                display_text(const.DATA_TYPES[piEnviro.displMode], data, const.DATA_UNITS[piEnviro.displMode])
 
-            if mode == 7:
-                # type = "pm1"
-                unit = "ug/m3"
-                data = float(pm_values.pm_ug_per_m3(1.0))
-                display_text(const.DATA_TYPES[mode], data, unit)
+            elif piEnviro.displMode == 7:   # type = "pm1"
+                data = float(pmData.pm_ug_per_m3(1.0))
+                display_text(const.DATA_TYPES[piEnviro.displMode], data, const.DATA_UNITS[piEnviro.displMode])
 
-            if mode == 8:
-                # type = "pm25"
-                unit = "ug/m3"
-                display_text(const.DATA_TYPES[mode], float(raw_pm25), unit)
+            elif piEnviro.displMode == 8:   # type = "pm25"
+                display_text(const.DATA_TYPES[piEnviro.displMode], float(pm25Raw), const.DATA_UNITS[piEnviro.displMode])
 
-            if mode == 9:
-                # type = "pm10"
-                unit = "ug/m3"
-                display_text(const.DATA_TYPES[mode], float(raw_pm10), unit)
+            elif piEnviro.displMode == 9:   # type = "pm10"
+                display_text(const.DATA_TYPES[piEnviro.displMode], float(pm10Raw), const.DATA_UNITS[piEnviro.displMode])
 
-            if mode == 10:
-                # Everything on one screen
-                save_data(0, comp_temp)
-                save_data(1, raw_press)
+            else:                           # Display everything on one screen
+                save_data(0, tempComp)
+                save_data(1, pressRaw)
                 display_everything()
 
-                save_data(2, raw_humid)
+                save_data(2, humidRaw)
                 if proximity < 10:
-                    raw_data = piEnviro.LTR559.get_lux()
+                    raw_data = piEnviro.get_lux()
                 else:
                     raw_data = 1
                 save_data(3, raw_data)
@@ -428,10 +372,11 @@ if __name__ == '__main__':
                 display_everything()
 
                 pms_data = None
-                save_data(7, float(pm_values.pm_ug_per_m3(1.0)))
-                save_data(8, float(raw_pm25))
-                save_data(9, float(raw_pm10))
+                save_data(7, float(pmData.pm_ug_per_m3(1.0)))
+                save_data(8, float(pm25Raw))
+                save_data(9, float(pm10Raw))
                 display_everything()
+
         except Exception as e:
             print(e)
             EXIT_NOW = True

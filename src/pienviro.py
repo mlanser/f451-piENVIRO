@@ -105,14 +105,14 @@ class Device:
         self._BME280 = BME280(i2c_dev=bus)                  # BME280 temperature, pressure, humidity sensor
 
         self._PMS5003 = PMS5003()                           # PMS5003 particulate sensor
-        self.LTR559 = ltr559                                # Proximity sensor
+        self._LTR559 = ltr559                               # Proximity sensor
         self.GAS = gas                                      # Enviro+
 
         # Initialize LCD and canvas
         self.LCD = self._init_LCD(config)                   # ST7735 0.96" 160x80 LCD
 
         self.displRotation = get_setting(config, const.KWD_ROTATION, const.DEF_ROTATION)
-        self.displMode = get_setting(config, const.KWD_DISPLAY, const.DISPL_SPARKLE)
+        self.displMode = get_setting(config, const.KWD_DISPLAY, const.DISPL_ALL)
         self.displProgress = convert_to_bool(get_setting(config, const.KWD_PROGRESS, const.STATUS_ON))
         self.displSleep = get_setting(config, const.KWD_SLEEP, const.DEF_SLEEP)
 
@@ -236,6 +236,12 @@ class Device:
             raise
         
         return info
+
+    def get_proximity(self):
+        return self._LTR559.get_proximity()
+    
+    def get_lux(self):
+        return self._LTR559.get_lux()
 
     def get_pressure(self):
         """Get air pressure data from BME280 sensor"""

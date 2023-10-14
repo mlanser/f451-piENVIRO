@@ -28,14 +28,7 @@ FONT_SIZE_LG = 20       # Large font size
 
 ROTATE_90 = 90          # Rotate 90 degrees    
 
-DISPL_BLANK = 0         # Display `blank` screen
-DISPL_SPARKLE = 1       # Show random sparkles
-DISPL_TEMP = 2          # Show temperature data
-DISPL_PRESS = 3         # Show barometric pressure data
-DISPL_HUMID = 4         # Show humidity data
-
-MIN_DISPL = DISPL_SPARKLE
-MAX_DISPL = DISPL_HUMID
+MAX_LEN_CPU_TEMPS = 5   # Max number of CPU temps
 
 DISPL_TOP_X = 2         # X/Y ccordinate of top-left corner for LCD content
 DISPL_TOP_Y = 2
@@ -50,6 +43,7 @@ DEF_THROTTLE = 120      # Default additional delay on 'ThrottlingError'
 DEF_ROTATION = 0
 DEF_SLEEP = 600
 DEF_ID_PREFIX = "raspi-"    # Default prefix for ID string
+DEF_TEMP_COMP_FACTOR = 1    # Default compensation factor for temperature
 
 LOG_CRITICAL = "CRITICAL"
 LOG_DEBUG = "DEBUG"
@@ -89,6 +83,8 @@ KWD_SLEEP = "SLEEP"
 KWD_LOG_LEVEL = "LOGLVL"
 KWD_LOG_FILE = "LOGFILE"
 
+KWD_TEMP_COMP = "TEMP_COMP"
+
 KWD_FEED_TEMPS = "FEED_TEMPS"
 KWD_FEED_PRESS = "FEED_PRESS"
 KWD_FEED_HUMID = "FEED_HUMID"
@@ -102,19 +98,29 @@ KWD_DATA_P1 = "P1"
 KWD_DISPL_TOP_X = "TOP_X"
 KWD_DISPL_TOP_Y = "TOP_Y"
 KWD_DISPL_TOP_BAR = "TOP_BAR"
+KWD_MAX_LEN_CPU_TEMPS = "CPU_TEMPS"
 
 
 # =========================================================
 #    C O N S T A N T S   F O R   E N V I R O N   D A T A
 # =========================================================
+
+
 # RGB color palette for values on combo/text screen
 COLOR_PALETTE = [
-    RGB_BLUE,     # Dangerously Low
-    RGB_CYAN,     # Low
-    RGB_GREEN,    # Normal
-    RGB_YELLOW,   # High
-    RGB_RED       # Dangerously High
+    RGB_BLUE,       # Dangerously Low
+    RGB_CYAN,       # Low
+    RGB_GREEN,      # Normal
+    RGB_YELLOW,     # High
+    RGB_RED         # Dangerously High
 ]         
+
+# Min/max display modes. Must correspond to 'DATA_TYPES' list
+DISPL_TEMPS = 0     # Temperature
+DISPL_ALL = 10      # Display all data
+
+MIN_DISPL = DISPL_TEMPS     
+MAX_DISPL = DISPL_ALL
 
 # List of environment data types
 DATA_TYPES = [
@@ -122,7 +128,7 @@ DATA_TYPES = [
     "pressure",
     "humidity",
     "light",
-    "oxidised",
+    "oxidized",
     "reduced",
     "nh3",
     "pm1",
