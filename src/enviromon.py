@@ -11,7 +11,14 @@ To launch this application from terminal:
     $ nohup python -u enviromon.py > enviromon.out &
 
 This will start the application in the background and it will keep running even after 
-terminal window is closed. Any output will be redirected to the 'pienviro.out' file.    
+terminal window is closed. Any output will be redirected to the 'pienviro.out' file.
+
+NOTE: This code is based on the 'luftdaten_combined.py' example from the Enviro+ Python
+      example files. Main modifications include support for Adafruit.io, using Python 
+      'deque' to manage data queues, moving device support to a separate class, etc.
+
+      We also support additional display modes including a screen-saver mode, support 
+      for 'settings.toml', and more.
 """
 
 import time
@@ -84,10 +91,10 @@ def save_data(idx, data, log=False):
     Save environment data so that it can be used 
     in graphs later and update log as needed
     """
-    global environDataSet
+    global enviroDataSet
 
     type = const.DATA_TYPES[idx]
-    environDataSet[type].append(data)
+    enviroDataSet[type].append(data)
 
     if log:
         piEnviro.log_info("{}: {:.1f} {}".format(type[:4], data, const.DATA_UNITS[idx]))
@@ -99,10 +106,10 @@ def save_data_and_display_graph(type, data, unit):
     This function saves data to global data set and then 
     displays data and corresponmding text on 0.96" LCD
     """
-    global environDataSet
+    global enviroDataSet
 
-    environDataSet[type].append(data)
-    piEnviro.display_as_graph(environDataSet[type], type, unit)
+    enviroDataSet[type].append(data)
+    piEnviro.display_as_graph(enviroDataSet[type], type, unit)
 
 
 def upload_environ_data(values, id):
@@ -199,15 +206,15 @@ if __name__ == '__main__':
     piEnviro = Device(config, appDir)
     piEnviro.display_init()
 
-    # try:
-    #     tempsFeed = piEnviro.get_feed_info(const.KWD_FEED_TEMPS)
-    #     pressFeed = piEnviro.get_feed_info(const.KWD_FEED_PRESS)
-    #     humidFeed = piEnviro.get_feed_info(const.KWD_FEED_HUMID)
+    try:
+        tempsFeed = piEnviro.get_feed_info(const.KWD_FEED_TEMPS)
+        pressFeed = piEnviro.get_feed_info(const.KWD_FEED_PRESS)
+        humidFeed = piEnviro.get_feed_info(const.KWD_FEED_HUMID)
 
-    # except RequestError as e:
-    #     piEnviro.log_error(f"Application terminated due to REQUEST ERROR: {e}")
-    #     piEnviro.display_reset()
-    #     sys.exit(1)
+    except RequestError as e:
+        piEnviro.log_error(f"Application terminated due to REQUEST ERROR: {e}")
+        piEnviro.display_reset()
+        sys.exit(1)
 
     # Get core settings
     ioDelay = piEnviro.get_config(const.KWD_DELAY, const.DEF_DELAY)
@@ -223,50 +230,23 @@ if __name__ == '__main__':
     cpuTempsQMaxLen = piEnviro.get_config(const.KWD_MAX_LEN_CPU_TEMPS, const.MAX_LEN_CPU_TEMPS)
     cpuTempsQ = deque([piEnviro.get_CPU_temp()] * cpuTempsQMaxLen, maxlen=cpuTempsQMaxLen)
 
-    environDataSet = {}
+    enviroDataSet = {}
     for t in const.DATA_TYPES:
-        environDataSet[t] = deque([1] * piEnviro.widthLCD, maxlen=piEnviro.widthLCD)
+        enviroDataSet[t] = deque([1] * piEnviro.widthLCD, maxlen=piEnviro.widthLCD)
 
     # Log core info
     debug_config_info(piEnviro)
     piEnviro.log_info("-- START Data Logging --")
 
-    #
-    # vvvvvvvvvvvvvvvvvvvvvvvvvv ============================ vvvvvvvvvvvvvvvvvvvvv
-    #
-    print("""luftdaten_combined.py - This combines the functionality of luftdaten.py and combined.py
-    ================================================================================================
-    Luftdaten INFO
-    Reads temperature, pressure, humidity,
-    PM2.5, and PM10 from Enviro plus and sends data to Luftdaten,
-    the citizen science air quality project.
-
-    Note: you'll need to register with Luftdaten at:
-    https://meine.luftdaten.info/ and enter your Raspberry Pi
-    serial number that's displayed on the Enviro plus LCD along
-    with the other details before the data appears on the
-    Luftdaten map.
-
-    Press Ctrl+C to exit!
-
-    ========================================================================
-
-    Combined INFO:
-    Displays readings from all of Enviro plus' sensors
-
-    Press Ctrl+C to exit!
-
-    """)
-
     # -- Main application loop --
     displayUpdate = 0
     timeSinceUpdate = 0
     timeUpdate = time.time()
-    counter = 0
+    tempCounter = 0
 
     while not EXIT_NOW:
-        counter += 1
-        EXIT_NOW = (counter >= 200)
+        tempCounter += 1
+        EXIT_NOW = (tempCounter >= 100)
 
         timeCurrent = time.time()
         timeSinceUpdate = timeCurrent - timeUpdate
@@ -380,24 +360,23 @@ if __name__ == '__main__':
         else:                           # Display everything on one screen
             save_data(const.IDX_TEMP, tempComp)
             save_data(const.IDX_PRESS, pressRaw)
-            piEnviro.display_as_text(environDataSet)
+            piEnviro.display_as_text(enviroDataSet)
 
             save_data(const.IDX_HUMID, humidRaw)
-            raw_data = piEnviro.get_lux() if (proximity < 10) else 1    # TO DO: fix magic number
-            save_data(const.IDX_LIGHT, raw_data)
-            piEnviro.display_as_text(environDataSet)
+            data = piEnviro.get_lux() if (proximity < 10) else 1    # TO DO: fix magic number
+            save_data(const.IDX_LIGHT, data)
+            piEnviro.display_as_text(enviroDataSet)
 
-            gas_data = piEnviro.get_gas_data()
-            save_data(4, gas_data.oxidising / 1000)
-            save_data(5, gas_data.reducing / 1000)
-            save_data(6, gas_data.nh3 / 1000)
-            piEnviro.display_as_text(environDataSet)
+            data = piEnviro.get_gas_data()
+            save_data(const.IDX_OXID, data.oxidising / 1000)
+            save_data(const.IDX_REDUC, data.reducing / 1000)
+            save_data(const.IDX_NH3, data.nh3 / 1000)
+            piEnviro.display_as_text(enviroDataSet)
 
-            pms_data = None
-            save_data(7, float(pmData.pm_ug_per_m3(1.0)))
-            save_data(8, float(pm25Raw))
-            save_data(9, float(pm10Raw))
-            piEnviro.display_as_text(environDataSet)
+            save_data(const.IDX_PM1, float(pmData.pm_ug_per_m3(1.0)))
+            save_data(const.IDX_PM25, float(pm25Raw))
+            save_data(const.IDX_PM10, float(pm10Raw))
+            piEnviro.display_as_text(enviroDataSet)
 
     # A bit of clean-up before we exit
     piEnviro.log_info("-- END Data Logging --")
