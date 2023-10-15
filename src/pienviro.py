@@ -14,6 +14,7 @@ import time
 import colorsys
 import sys
 import logging
+import pprint
 
 from random import randint
 
@@ -98,6 +99,7 @@ class Device:
             get_setting(config, const.KWD_AIO_KEY, "")
         )
         self.logger = self._init_logger(config, appDir)     # Logger
+        self._PP = pprint.PrettyPrinter(indent=4)
 
         self.serialNum = self._get_serial_num()             # RaspberryPi serial number
         
@@ -270,20 +272,23 @@ class Device:
         return data
 
     def log(self, lvl, msg):
-            """Wrapper of Logger.log()"""
-            self.logger.log(lvl, msg)
+        """Wrapper of Logger.log()"""
+        self.logger.log(lvl, msg)
 
     def log_error(self, msg):
-            """Wrapper of Logger.error()"""
-            self.logger.error(msg)
+        """Wrapper of Logger.error()"""
+        self.logger.error(msg)
 
     def log_info(self, msg):
-            """Wrapper of Logger.info()"""
-            self.logger.info(msg)
+        """Wrapper of Logger.info()"""
+        self.logger.info(msg)
 
     def log_debug(self, msg):
-            """Wrapper of Logger.debug()"""
-            self.logger.debug(msg)
+        """Wrapper of Logger.debug()"""
+        self.logger.debug(msg)
+
+    def pprint(self, val):
+        self._PP.pprint(val)
 
     def display_init(self):
         self.displImg = Image.new('RGB', (self._LCD.width, self._LCD.height), color=const.RGB_BLACK)

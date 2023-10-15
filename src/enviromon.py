@@ -246,7 +246,7 @@ if __name__ == '__main__':
 
     while not EXIT_NOW:
         tempCounter += 1
-        EXIT_NOW = (tempCounter >= 100)
+        EXIT_NOW = (tempCounter >= 10)
 
         timeCurrent = time.time()
         timeSinceUpdate = timeCurrent - timeUpdate
@@ -382,3 +382,4 @@ if __name__ == '__main__':
     piEnviro.log_info("-- END Data Logging --")
     piEnviro.display_reset()
     piEnviro.display_off()
+    piEnviro.pprint(enviroDataSet)
