@@ -34,6 +34,9 @@ DISPL_TOP_X = 2         # X/Y ccordinate of top-left corner for LCD content
 DISPL_TOP_Y = 2
 DISPL_TOP_BAR = 25      # Height (in px) of top bar
 
+PROX_DEBOUNCE = 0.5     # Delay to debounce proximity sensor on 'tap'
+PROX_LIMIT = 1500       # Threshold for proximity sensor to detect 'tap'
+
 DEF_LCD_OFFSET_X = 1    # Default horizontal offset for LCD
 DEF_LCD_OFFSET_Y = 1    # Default vertical offseet for LCD 
 
@@ -122,18 +125,29 @@ DISPL_ALL = 10      # Display all data
 MIN_DISPL = DISPL_TEMPS     
 MAX_DISPL = DISPL_ALL
 
+IDX_TEMP  = 0
+IDX_PRESS = 1
+IDX_HUMID = 2
+IDX_LIGHT = 3
+IDX_OXID  = 4
+IDX_REDUC = 5
+IDX_NH3   = 6
+IDX_PM1   = 7
+IDX_PM25  = 8
+IDX_PM10  = 9
+
 # List of environment data types
 DATA_TYPES = [
-    "temperature",  
-    "pressure",
-    "humidity",
-    "light",
-    "oxidized",
-    "reduced",
-    "nh3",
-    "pm1",
-    "pm25",
-    "pm10"
+    "temperature",          # 0
+    "pressure",             # 1
+    "humidity",             # 2
+    "light",                # 3
+    "oxidised",             # 4
+    "reduced",              # 5
+    "nh3",                  # 6
+    "pm1",                  # 7
+    "pm25",                 # 8
+    "pm10"                  # 9
 ]
 
 # List of environment data units

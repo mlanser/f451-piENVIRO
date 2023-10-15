@@ -106,10 +106,10 @@ class Device:
 
         self._PMS5003 = PMS5003()                           # PMS5003 particulate sensor
         self._LTR559 = ltr559                               # Proximity sensor
-        self.GAS = gas                                      # Enviro+
+        self._GAS = gas                                     # Enviro+
 
         # Initialize LCD and canvas
-        self.LCD = self._init_LCD(config)                   # ST7735 0.96" 160x80 LCD
+        self._LCD = self._init_LCD(config)                   # ST7735 0.96" 160x80 LCD
 
         self.displRotation = get_setting(config, const.KWD_ROTATION, const.DEF_ROTATION)
         self.displMode = get_setting(config, const.KWD_DISPLAY, const.DISPL_ALL)
@@ -128,11 +128,11 @@ class Device:
 
     @property
     def widthLCD(self):
-        return self.LCD.width
+        return self._LCD.width
     
     @property
     def heightLCD(self):
-        return self.LCD.height
+        return self._LCD.height
 
     def _init_logger(self, config, appDir):
         """Initialize Logger
@@ -255,6 +255,9 @@ class Device:
         """Get temperature data from BME280"""
         return self._BME280.get_temperature()
 
+    def get_gas_data(self):
+        return self._GAS.read_all()
+
     def get_particles(self):
         """Get particle data from PMS5003"""
         try:
@@ -265,19 +268,6 @@ class Device:
             data = self._PMS5003.read()
 
         return data
-
-    def get_sensor_data(self):
-        """
-        Read sensor data and round values to 1 decimal place
-
-        Returns:
-            'tuple' with 1 data point from each of the SenseHat sensors
-        """
-        tempC = round(self.enviro.get_temperature(), 1)     # Temperature in C
-        press = round(self.enviro.get_pressure(), 1)        # Presure in hPa
-        humid = round(self.enviro.get_humidity(), 1)        # Humidity 
-
-        return tempC, press, humid 
 
     def log(self, lvl, msg):
             """Wrapper of Logger.log()"""
@@ -296,22 +286,22 @@ class Device:
             self.logger.debug(msg)
 
     def display_init(self):
-        self.displImg = Image.new('RGB', (self.LCD.width, self.LCD.height), color=const.RGB_BLACK)
+        self.displImg = Image.new('RGB', (self._LCD.width, self._LCD.height), color=const.RGB_BLACK)
         self.displDraw = ImageDraw.Draw(self.displImg)
         self.displFontLG = ImageFont.truetype(RobotoMedium, const.FONT_SIZE_LG)
         self.displFontSM = ImageFont.truetype(RobotoMedium, const.FONT_SIZE_SM)
 
     def display_on(self):
-        self.LCD.display_on()
+        self._LCD.display_on()
 
     def display_off(self):
-        self.LCD.display_off()
+        self._LCD.display_off()
         
     def display_blank(self):
         """Show clear/blank LED"""
-        img = Image.new('RGB', (self.LCD.width, self.LCD.height), color=(0, 0, 0))
+        img = Image.new('RGB', (self._LCD.width, self._LCD.height), color=(0, 0, 0))
         # draw = ImageDraw.Draw(img)
-        self.LCD.display(img)
+        self._LCD.display(img)
 
     def display_reset(self):
         """Reset and clear LED"""
@@ -354,7 +344,7 @@ class Device:
         # Format data type name and value
         message = "{}: {:.1f} {}".format(dataType[:4], data[-1], dataUnit)
         self.log_info(message)
-        self.displDraw.rectangle((0, 0, self.LCD.width, self.LCD.height), const.RGB_WHITE)
+        self.displDraw.rectangle((0, 0, self._LCD.width, self._LCD.height), const.RGB_WHITE)
         
         for i in range(len(colors)):
             # Convert the values to colors from red to blue
@@ -363,15 +353,15 @@ class Device:
                     for x in colorsys.hsv_to_rgb(color, 1.0, 1.0)]
         
             # Draw a 1-pixel wide rectangle of given color
-            self.displDraw.rectangle((i, self.displTopBar, i + 1, self.LCD.height), (r, g, b))
+            self.displDraw.rectangle((i, self.displTopBar, i + 1, self._LCD.height), (r, g, b))
         
             # Draw and overlay a line graph in black
-            line_y = self.LCD.height - (self.displTopBar + (colors[i] * (self.LCD.height - self.displTopBar))) + self.displTopBar
+            line_y = self._LCD.height - (self.displTopBar + (colors[i] * (self._LCD.height - self.displTopBar))) + self.displTopBar
             self.displDraw.rectangle((i, line_y, i + 1, line_y + 1), const.RGB_BLACK)
         
         # Write the text at the top in black
         self.displDraw.text((0, 0), message, font=self.displFontLG, fill=const.RGB_BLACK)
-        self.LCD.display(self.displImg)
+        self._LCD.display(self.displImg)
     
     def display_as_text(self, data):
         """Display graph and data point as text label
@@ -386,7 +376,7 @@ class Device:
             dataUnit:
                 'str' with data unit (e.g. 'C' for Celsius, etc.)
         """
-        self.displDraw.rectangle((0, 0, self.LCD.width, self.LCD.height), const.RGB_BLACK)
+        self.displDraw.rectangle((0, 0, self._LCD.width, self._LCD.height), const.RGB_BLACK)
         cols = 2
         rows = (len(const.DATA_TYPES) / cols)
 
@@ -395,8 +385,8 @@ class Device:
             val = data[type][-1]
             unit = const.DATA_UNITS[i]
             
-            x = const.DEF_LCD_OFFSET_X + ((self.LCD.width // cols) * (i // rows))
-            y = const.DEF_LCD_OFFSET_Y + ((self.LCD.height / rows) * (i % rows))
+            x = const.DEF_LCD_OFFSET_X + ((self._LCD.width // cols) * (i // rows))
+            y = const.DEF_LCD_OFFSET_Y + ((self._LCD.height / rows) * (i % rows))
             
             message = "{}: {:.1f} {}".format(type[:4], val, unit)
             
@@ -408,7 +398,7 @@ class Device:
                     rgb = const.COLOR_PALETTE[j + 1]
             self.displDraw.text((x, y), message, font=self.displFontSM, fill=rgb)
         
-        self.LCD.display(self.displImg)
+        self._LCD.display(self.displImg)
 
     def display_progress(self, inVal, maxVal=100):
         """Update progressbar on bottom row of LED
