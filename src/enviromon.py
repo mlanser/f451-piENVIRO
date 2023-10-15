@@ -69,6 +69,17 @@ def debug_config_info(dev):
 # =========================================================
 #              H E L P E R   F U N C T I O N S
 # =========================================================
+def init_data_set(defVal, maxLen):
+    dataSet = {}
+    for idx, dt in enumerate(const.DATA_TYPES):
+        dataSet[dt] = {
+            "data": deque([defVal] * maxLen, maxlen=maxLen),
+            "unit": const.DATA_UNITS[idx],
+            "limits": const.DATA_LIMITS[idx]
+        }
+
+    return dataSet
+
 def process_environ_data(temp, press, humid, pm25, pm10):
     """Process environment data
 
@@ -94,13 +105,13 @@ def save_data(idx, data, log=False):
     global enviroDataSet
 
     type = const.DATA_TYPES[idx]
-    enviroDataSet[type].append(data)
+    enviroDataSet[type]["data"].append(data)
 
     if log:
-        piEnviro.log_info("{}: {:.1f} {}".format(type[:4], data, const.DATA_UNITS[idx]))
+        piEnviro.log_info("{}: {:.1f} {}".format(type[:4], data, enviroDataSet[type]["unit"]))
 
 
-def save_data_and_display_graph(type, data, unit):
+def save_data_and_display_graph(type, data, log=False):
     """Save data and display graph
 
     This function saves data to global data set and then 
@@ -108,8 +119,11 @@ def save_data_and_display_graph(type, data, unit):
     """
     global enviroDataSet
 
-    enviroDataSet[type].append(data)
-    piEnviro.display_as_graph(enviroDataSet[type], type, unit)
+    enviroDataSet[type]["data"].append(data)
+    piEnviro.display_as_graph(enviroDataSet[type]["data"], type, enviroDataSet[type]["unit"])
+
+    if log:
+        piEnviro.log_info("{}: {:.1f} {}".format(type[:4], data, enviroDataSet[type]["unit"]))
 
 
 def upload_environ_data(values, id):
@@ -230,9 +244,8 @@ if __name__ == '__main__':
     cpuTempsQMaxLen = piEnviro.get_config(const.KWD_MAX_LEN_CPU_TEMPS, const.MAX_LEN_CPU_TEMPS)
     cpuTempsQ = deque([piEnviro.get_CPU_temp()] * cpuTempsQMaxLen, maxlen=cpuTempsQMaxLen)
 
-    enviroDataSet = {}
-    for t in const.DATA_TYPES:
-        enviroDataSet[t] = deque([1] * piEnviro.widthLCD, maxlen=piEnviro.widthLCD)
+    # enviroDataSet = init_data_set(1, piEnviro.widthLCD)
+    enviroDataSet = init_data_set(1, 10)
 
     # Log core info
     debug_config_info(piEnviro)
@@ -286,75 +299,65 @@ if __name__ == '__main__':
         if piEnviro.displMode == const.IDX_TEMP:        # type = "temperature"
             save_data_and_display_graph(
                 const.DATA_TYPES[piEnviro.displMode], 
-                tempComp, 
-                const.DATA_UNITS[piEnviro.displMode]
+                tempComp
             )
 
         elif piEnviro.displMode == const.IDX_PRESS:     # type = "pressure"
             save_data_and_display_graph(
                 const.DATA_TYPES[piEnviro.displMode], 
-                pressRaw, 
-                const.DATA_UNITS[piEnviro.displMode]
+                pressRaw
             )
 
         elif piEnviro.displMode == const.IDX_HUMID:     # type = "humidity"
             save_data_and_display_graph(
                 const.DATA_TYPES[piEnviro.displMode], 
-                humidRaw, 
-                const.DATA_UNITS[piEnviro.displMode]
+                humidRaw
             )
 
         elif piEnviro.displMode == const.IDX_LIGHT:     # type = "light"
             data = piEnviro.get_lux() if (proximity < 10) else 1    # TO DO: fix magic number
             save_data_and_display_graph(
                 const.DATA_TYPES[piEnviro.displMode], 
-                data, 
-                const.DATA_UNITS[piEnviro.displMode]
+                data
             )
 
         elif piEnviro.displMode == const.IDX_OXID:      # type = "oxidised"
             data = piEnviro.get_gas_data()
             save_data_and_display_graph(
                 const.DATA_TYPES[piEnviro.displMode], 
-                data.oxidising / 1000, 
-                const.DATA_UNITS[piEnviro.displMode]
+                data.oxidising / 1000
             )
 
         elif piEnviro.displMode == const.IDX_REDUC:     # type = "reduced"
             data = piEnviro.get_gas_data()
             save_data_and_display_graph(
                 const.DATA_TYPES[piEnviro.displMode], 
-                data.reducing / 1000, 
-                const.DATA_UNITS[piEnviro.displMode]
+                data.reducing / 1000
             )
 
         elif piEnviro.displMode == const.IDX_NH3:       # type = "nh3"
             data = piEnviro.get_gas_data()
             save_data_and_display_graph(
                 const.DATA_TYPES[piEnviro.displMode], 
-                data.nh3 / 1000, 
-                const.DATA_UNITS[piEnviro.displMode]
+                data.nh3 / 1000
             )
 
         elif piEnviro.displMode == const.IDX_PM1:       # type = "pm1"
             save_data_and_display_graph(
                 const.DATA_TYPES[piEnviro.displMode], 
-                float(pmData.pm_ug_per_m3(1.0)), 
-                const.DATA_UNITS[piEnviro.displMode]
+                float(pmData.pm_ug_per_m3(1.0))
             )
 
         elif piEnviro.displMode == const.IDX_PM25:      # type = "pm25"
             save_data_and_display_graph(
                 const.DATA_TYPES[piEnviro.displMode], 
-                float(pm25Raw), 
-                const.DATA_UNITS[piEnviro.displMode]
+                float(pm25Raw)
             )
 
         elif piEnviro.displMode == const.IDX_PM10:      # type = "pm10"
             save_data_and_display_graph(
                 const.DATA_TYPES[piEnviro.displMode], 
-                float(pm10Raw), 
-                const.DATA_UNITS[piEnviro.displMode]
+                float(pm10Raw)
             )
 
         else:                           # Display everything on one screen
