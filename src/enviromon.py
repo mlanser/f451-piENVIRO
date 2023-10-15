@@ -89,12 +89,8 @@ def save_data(idx, data, log=False):
     type = const.DATA_TYPES[idx]
     environDataSet[type].append(data)
 
-    msg = "{}: {:.1f} {}".format(type[:4], data, const.DATA_UNITS[idx])
-
     if log:
-        piEnviro.log_info(msg)
-    else:
-        piEnviro.log_debug(msg)
+        piEnviro.log_info("{}: {:.1f} {}".format(type[:4], data, const.DATA_UNITS[idx]))
 
 
 def save_data_and_display_graph(type, data, unit):
