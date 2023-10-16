@@ -328,26 +328,28 @@ class Device:
         # else:    
         #     self.enviro.clear()
 
-    def display_as_graph(self, data, dataType, dataUnit):
+    def display_as_graph(self, data):
         """Display graph and data point as text label
         
         This method will redraw the entire LCD
 
         Args:
             data:
-                'list' with one value for each column of pixels on LCD
-            dataType:
-                'str' with data type name (e.g. 'temperature', etc.)
-            dataUnit:
-                'str' with data unit (e.g. 'C' for Celsius, etc.)
+                'dict' as follows:
+                    {
+                        "data": [list of values],
+                        "unit" <unit string>,
+                        "label": <label string>,
+                        "limit": [list of limits]
+                    }    
         """
         # Scale values in data set between 0 and 1
-        vmin = min(data)
-        vmax = max(data)
-        colors = [(v - vmin + 1) / (vmax - vmin + 1) for v in data]
+        vmin = min(data["data"])
+        vmax = max(data["data"])
+        colors = [(v - vmin + 1) / (vmax - vmin + 1) for v in data["data"]]
         
         # Format data type name and value
-        message = "{}: {:.1f} {}".format(dataType[:4], data[-1], dataUnit)
+        message = "{}: {:.1f} {}".format(data["label"][:4], data["data"][-1], data["unit"])
         self.log_info(message)
         self.displDraw.rectangle((0, 0, self._LCD.width, self._LCD.height), const.RGB_WHITE)
         
@@ -375,7 +377,13 @@ class Device:
 
         Args:
             data:
-                Data set with values for each column of pixels on LCD
+                'list' of data rows where each row is a 'dict' as follows:
+                    {
+                        "data": [list of values],
+                        "unit" <unit string>,
+                        "label": <label string>,
+                        "limit": [list of limits]
+                    }    
         """
         self.displDraw.rectangle((0, 0, self._LCD.width, self._LCD.height), const.RGB_BLACK)
 
@@ -386,13 +394,13 @@ class Device:
             x = const.DEF_LCD_OFFSET_X + ((self._LCD.width // cols) * (idx // rows))
             y = const.DEF_LCD_OFFSET_Y + ((self._LCD.height / rows) * (idx % rows))
             
-            message = "{}: {:.1f} {}".format(item["label"][:4], item["data"], item["unit"])
+            message = "{}: {:.1f} {}".format(item["label"][:4], item["data"][-1], item["unit"])
             
             lim = item["limits"]
             rgb = const.COLOR_PALETTE[0]
 
             for j in range(len(lim)):
-                if item["data"] > lim[j]:
+                if item["data"][-1] > lim[j]:
                     rgb = const.COLOR_PALETTE[j + 1]
 
             self.displDraw.text((x, y), message, font=self.displFontSM, fill=rgb)

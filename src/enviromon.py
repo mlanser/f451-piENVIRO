@@ -98,16 +98,21 @@ def process_environ_data(temp, press, humid, pm25, pm10):
     return data
 
 
+def prep_data_row(inData, label=""):
+    row = {
+        "data": inData["data"],
+        "unit": inData["unit"],
+        "limits": inData["limits"],
+        "label": label.capitalize()
+    }
+
+    return row
+
 def prep_data_for_text_display(inData):
     data = []
 
     for key, item in inData.items():
-        data.append({
-            "data": item["data"][-1],
-            "unit": item["unit"],
-            "limits": item["limits"],
-            "label": key.capitalize()
-        })
+        data.append(prep_data_row(data, key))
 
     return data
 
@@ -136,7 +141,9 @@ def save_data_and_display_graph(type, data, log=False):
     global enviroDataSet
 
     enviroDataSet[type]["data"].append(data)
-    piEnviro.display_as_graph(enviroDataSet[type]["data"], type, enviroDataSet[type]["unit"])
+    piEnviro.display_as_graph(
+        prep_data_row(enviroDataSet[type]["data"], type)
+    )
 
     if log:
         piEnviro.log_info("{}: {:.1f} {}".format(type[:4], data, enviroDataSet[type]["unit"]))
