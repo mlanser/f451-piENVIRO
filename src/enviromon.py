@@ -112,7 +112,7 @@ def prep_data_for_text_display(inData):
     data = []
 
     for key, item in inData.items():
-        data.append(prep_data_row(data, key))
+        data.append(prep_data_row(item, key))
 
     return data
 
