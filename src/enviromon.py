@@ -98,6 +98,20 @@ def process_environ_data(temp, press, humid, pm25, pm10):
     return data
 
 
+def prep_data_for_text_display(inData):
+    data = []
+
+    for key, item in inData.items():
+        data.append({
+            "data": item["data"][-1],
+            "unit": item["unit"],
+            "limits": item["limits"],
+            "label": key.capitalize()
+        })
+
+    return data
+
+
 def save_data(idx, data, log=False):
     """Save environment data
 
@@ -365,23 +379,23 @@ if __name__ == '__main__':
         else:                           # Display everything on one screen
             save_data(const.IDX_TEMP, tempComp)
             save_data(const.IDX_PRESS, pressRaw)
-            piEnviro.display_as_text(enviroDataSet)
+            piEnviro.display_as_text(prep_data_for_text_display(enviroDataSet))
 
             save_data(const.IDX_HUMID, humidRaw)
             data = piEnviro.get_lux() if (proximity < 10) else 1    # TO DO: fix magic number
             save_data(const.IDX_LIGHT, data)
-            piEnviro.display_as_text(enviroDataSet)
+            piEnviro.display_as_text(prep_data_for_text_display(enviroDataSet))
 
             data = piEnviro.get_gas_data()
             save_data(const.IDX_OXID, data.oxidising / 1000)
             save_data(const.IDX_REDUC, data.reducing / 1000)
             save_data(const.IDX_NH3, data.nh3 / 1000)
-            piEnviro.display_as_text(enviroDataSet)
+            piEnviro.display_as_text(prep_data_for_text_display(enviroDataSet))
 
             save_data(const.IDX_PM1, float(pmData.pm_ug_per_m3(1.0)))
             save_data(const.IDX_PM25, float(pm25Raw))
             save_data(const.IDX_PM10, float(pm10Raw))
-            piEnviro.display_as_text(enviroDataSet)
+            piEnviro.display_as_text(prep_data_for_text_display(enviroDataSet))
 
     # A bit of clean-up before we exit
     piEnviro.log_info("-- END Data Logging --")

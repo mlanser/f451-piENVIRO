@@ -381,25 +381,21 @@ class Device:
 
         cols = 2
         rows = (len(data) / cols)
-        idx = 0
 
-        for key, item in data.items():
-            val = item["data"][-1]
-            
+        for idx, item in enumerate(data):
             x = const.DEF_LCD_OFFSET_X + ((self._LCD.width // cols) * (idx // rows))
             y = const.DEF_LCD_OFFSET_Y + ((self._LCD.height / rows) * (idx % rows))
             
-            message = "{}: {:.1f} {}".format(key[:4], val, item["unit"])
+            message = "{}: {:.1f} {}".format(item["label"][:4], item["data"], item["unit"])
             
             lim = item["limits"]
             rgb = const.COLOR_PALETTE[0]
 
             for j in range(len(lim)):
-                if val > lim[j]:
+                if item["data"] > lim[j]:
                     rgb = const.COLOR_PALETTE[j + 1]
 
             self.displDraw.text((x, y), message, font=self.displFontSM, fill=rgb)
-            idx += 1
         
         self._LCD.display(self.displImg)
 
