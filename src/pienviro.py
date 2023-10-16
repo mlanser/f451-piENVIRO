@@ -385,17 +385,15 @@ class Device:
         cols = 2
         rows = (len(const.DATA_TYPES) / cols)
 
-        for i in range(len(const.DATA_TYPES)):
-            type = const.DATA_TYPES[i]
-            val = data[type][-1]
-            unit = const.DATA_UNITS[i]
+        for i, type in enumerate(data):
+            val = type["data"][-1]
             
             x = const.DEF_LCD_OFFSET_X + ((self._LCD.width // cols) * (i // rows))
             y = const.DEF_LCD_OFFSET_Y + ((self._LCD.height / rows) * (i % rows))
             
-            message = "{}: {:.1f} {}".format(type[:4], val, unit)
+            message = "{}: {:.1f} {}".format(type[:4], val, type["unit"])
             
-            lim = const.DATA_LIMITS[i]
+            lim =  data[type]["limits"]
             rgb = const.COLOR_PALETTE[0]
 
             for j in range(len(lim)):
