@@ -71,6 +71,7 @@ def debug_config_info(dev):
 # =========================================================
 def init_data_set(defVal, maxLen):
     dataSet = {}
+
     for idx, dt in enumerate(const.DATA_TYPES):
         dataSet[dt] = {
             "data": deque([defVal] * maxLen, maxlen=maxLen),
@@ -79,6 +80,7 @@ def init_data_set(defVal, maxLen):
         }
 
     return dataSet
+
 
 def process_environ_data(temp, press, humid, pm25, pm10):
     """Process environment data

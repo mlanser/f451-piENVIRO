@@ -136,6 +136,7 @@ IDX_PM1   = 7
 IDX_PM25  = 8
 IDX_PM10  = 9
 
+
 # List of environment data types
 DATA_TYPES = [
     "temperature",          # 0
