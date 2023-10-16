@@ -375,31 +375,31 @@ class Device:
 
         Args:
             data:
-                'list' with one value for each column of pixels on LCD
-            dataType:
-                'str' with data type name (e.g. 'temperature', etc.)
-            dataUnit:
-                'str' with data unit (e.g. 'C' for Celsius, etc.)
+                Data set with values for each column of pixels on LCD
         """
         self.displDraw.rectangle((0, 0, self._LCD.width, self._LCD.height), const.RGB_BLACK)
-        cols = 2
-        rows = (len(const.DATA_TYPES) / cols)
 
-        for i, type in enumerate(data):
-            val = type["data"][-1]
+        cols = 2
+        rows = (len(data) / cols)
+        idx = 0
+
+        for key, item in data.items():
+            val = item["data"][-1]
             
-            x = const.DEF_LCD_OFFSET_X + ((self._LCD.width // cols) * (i // rows))
-            y = const.DEF_LCD_OFFSET_Y + ((self._LCD.height / rows) * (i % rows))
+            x = const.DEF_LCD_OFFSET_X + ((self._LCD.width // cols) * (idx // rows))
+            y = const.DEF_LCD_OFFSET_Y + ((self._LCD.height / rows) * (idx % rows))
             
-            message = "{}: {:.1f} {}".format(type[:4], val, type["unit"])
+            message = "{}: {:.1f} {}".format(key[:4], val, item["unit"])
             
-            lim =  data[type]["limits"]
+            lim = item["limits"]
             rgb = const.COLOR_PALETTE[0]
 
             for j in range(len(lim)):
                 if val > lim[j]:
                     rgb = const.COLOR_PALETTE[j + 1]
+
             self.displDraw.text((x, y), message, font=self.displFontSM, fill=rgb)
+            idx += 1
         
         self._LCD.display(self.displImg)
 
