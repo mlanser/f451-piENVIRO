@@ -243,6 +243,10 @@ if __name__ == '__main__':
     piEnviro = Device(config, appDir)
     piEnviro.display_init()
 
+    # enviroDataSet = init_data_set(1, piEnviro.widthLCD)
+    enviroDataSet = init_data_set(1, 10, )
+
+
     try:
         tempsFeed = piEnviro.get_feed_info(const.KWD_FEED_TEMPS)
         pressFeed = piEnviro.get_feed_info(const.KWD_FEED_PRESS)
@@ -266,9 +270,6 @@ if __name__ == '__main__':
     # Initialize core data queues
     cpuTempsQMaxLen = piEnviro.get_config(const.KWD_MAX_LEN_CPU_TEMPS, const.MAX_LEN_CPU_TEMPS)
     cpuTempsQ = deque([piEnviro.get_CPU_temp()] * cpuTempsQMaxLen, maxlen=cpuTempsQMaxLen)
-
-    # enviroDataSet = init_data_set(1, piEnviro.widthLCD)
-    enviroDataSet = init_data_set(1, 10)
 
     # Log core info
     debug_config_info(piEnviro)
