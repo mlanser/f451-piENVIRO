@@ -26,5 +26,5 @@ THROTTLE = 120          # Additional delay in seconds on 'ThottlingError'
 PROGRESS = "on"         # [on|off] - show upload progress bar on LCD
 SLEEP = 600             # Delay in seconds until screen is blanked
 
-LOGLVL = "error"        # [debug|info|error] - logging level
+LOGLVL = 10             # [10|20|30|40|50] - logging level
 LOGFILE = "<FILE NAME>"

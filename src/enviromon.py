@@ -34,12 +34,14 @@ from Adafruit_IO import Client, MQTTClient, RequestError, ThrottlingError
 
 import constants as const
 from pienviro import Device
-from common import exit_now, check_wifi, EXIT_NOW
+from common import exit_now, check_wifi, get_setting, EXIT_NOW
 
 try:
     import tomllib
 except ModuleNotFoundError:
     import tomli as tomllib
+
+from f451_logger import Logger as f451Logger
 
 
 # =========================================================
@@ -69,6 +71,18 @@ def debug_config_info(dev):
 # =========================================================
 #              H E L P E R   F U N C T I O N S
 # =========================================================
+def init_logger(config, appDir):
+    logLvl = get_setting(config, const.KWD_LOG_LEVEL, const.LOG_INFO)
+    logFile = get_setting(config, const.KWD_LOG_FILE)
+    logFileFP = appDir.parent.joinpath(logFile) if logFile else None
+
+    return f451Logger("f451-piENVIRO", logLvl, logFileFP)
+
+
+def init_uploader(config):
+    return None
+
+
 def init_data_set(defVal, maxLen):
     dataSet = {}
 
@@ -238,14 +252,17 @@ if __name__ == '__main__':
     except tomllib.TOMLDecodeError:
         sys.exit("Invalid 'settings.toml' file")      
 
-    # Initialize device instance which includes the logger, 
-    # Enviro+, and Adafruit IO client
+    # Initialize device instance which includes all sensors
+    # an d LCD display on Enviro+
     piEnviro = Device(config, appDir)
     piEnviro.display_init()
 
+    # Initialize logger and IO uploader
+    logger = init_logger(config, appDir)
+    uploader = init_uploader(config)
+
     # enviroDataSet = init_data_set(1, piEnviro.widthLCD)
     enviroDataSet = init_data_set(1, 10, )
-
 
     try:
         tempsFeed = piEnviro.get_feed_info(const.KWD_FEED_TEMPS)
