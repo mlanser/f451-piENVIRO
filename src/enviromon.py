@@ -305,12 +305,23 @@ if __name__ == '__main__':
         timeCurrent = time.time()
         timeSinceUpdate = timeCurrent - timeUpdate
 
+        # Get raw temp from sensor
+        tempRaw = piEnviro.get_temperature()
+
         # Get current CPU temp, add to queue, and calculate new average
-        cpuTempsQ.append(piEnviro.get_CPU_temp())
+        #
+        # NOTE: This feature relies on the 'vcgencmd' which is found on
+        #       RPIs. If this is not run on a RPI (e.g. during testing),
+        #       then we need to neutralize the 'cpuTemp' compensation. 
+        try:
+            cpuTemp = piEnviro.get_CPU_temp()
+        except FileNotFoundError:
+            cpuTemp = tempRaw
+
+        cpuTempsQ.append(cpuTemp)
         cpuTempAvg = sum(cpuTempsQ) / float(cpuTempsQMaxLen)
 
         # Smooth out with some averaging to decrease jitter
-        tempRaw = piEnviro.get_temperature()
         tempComp = tempRaw - ((cpuTempAvg - tempRaw) / tempCompFactor)
 
         pressRaw = piEnviro.get_pressure()
