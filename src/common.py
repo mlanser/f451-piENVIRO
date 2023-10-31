@@ -5,7 +5,7 @@ most/all applications designed for the f451 Labs piENVIRO device.
 """
 
 import sys
-from subprocess import check_output
+from subprocess import check_output, STDOUT, DEVNULL
 import constants as const
 
 
@@ -29,32 +29,45 @@ def exit_now(self, *args):
 
 
 def check_wifi():
-    """Check for Wi-Fi connection
+    """Check for Wi-Fi connection on Raspberry Pi
 
     Based on code from Enviro+ example 'luftdaten_combined.py'
-    """
-    return True if check_output(['hostname', '-I']) else False
 
-
-def get_setting(settings, key, default=None):
-    """Get a config value from settings
-    
-    This function rerieves value from settings (TOML), but can
-    return a default value if key does not exist (i.e. settings 
-    value has not been defined in TOML file.
-
-    Args:
-        settings:
-            'dict' with settings values
-        key:
-            'str' with name of settings key
-        defaul:
-            Default value
+    TODO: verify better way to do this
 
     Returns:
-        Settings value        
+        'True' - wi-fi confirmed
+        'False' - status unknown
     """
-    return settings[key] if key in settings else default
+    try:
+        result = check_output(['hostname', '-I'], stdout=DEVNULL, stderr=STDOUT)
+    except:
+        result = None
+
+    return True if result is not None else False
+
+
+def get_RPI_serial_num():
+    """Get Raspberry Pi serial number
+    
+    Based on code from Enviro+ example 'luftdaten_combined.py'
+
+    Returns:
+        'str' with RPI serial number or 'None' if we can't find it
+    """
+    try:
+        with open('/proc/cpuinfo', 'r') as f:
+            for line in f:
+                if line[0:6] == 'Serial':
+                    return line.split(":")[1].strip()
+    except OSError:
+        return None
+
+
+def get_RPI_ID(prefix="", suffix="", default="n/a"):
+    serialNum = get_RPI_serial_num()
+    if serialNum:
+        return prefix + serialNum + suffix
 
 
 def num_to_range(num, inMin, inMax, outMin, outMax):

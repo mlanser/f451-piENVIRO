@@ -28,7 +28,7 @@ RGB_PROGRESS = (127, 0, 255) # Use for progressbar at bottom of LED
 
 ROTATE_90 = 90              # Rotate 90 degrees    
 
-# MAX_LEN_CPU_TEMPS = 5       # Max number of CPU temps
+MAX_LEN_CPU_TEMPS = 5       # Max number of CPU temps
 
 # DISPL_TOP_X = 2             # X/Y ccordinate of top-left corner for LCD content
 # DISPL_TOP_Y = 2
@@ -47,7 +47,8 @@ DEF_THROTTLE = 120          # Default additional delay on 'ThrottlingError'
 # DEF_ROTATION = 0
 # DEF_SLEEP = 600
 # DEF_ID_PREFIX = "raspi-"    # Default prefix for ID string
-# DEF_TEMP_COMP_FACTOR = 1    # Default compensation factor for temperature
+
+DEF_TEMP_COMP_FACTOR = 1    # Default compensation factor for temperature
 
 # LOG_NOTSET = 0
 # LOG_DEBUG = 10
@@ -67,8 +68,9 @@ DEF_THROTTLE = 120          # Default additional delay on 'ThrottlingError'
 # STATUS_OFF = "off"
 # STATUS_TRUE = "true"
 # STATUS_FALSE = "false"
-# STATUS_YES = "yes"
-# STATUS_NO = "no"
+STATUS_YES = "yes"
+STATUS_NO = "no"
+STATUS_UNKNOWN = "unknown"
 
 
 # =========================================================
@@ -83,7 +85,8 @@ DEF_THROTTLE = 120          # Default additional delay on 'ThrottlingError'
 # KWD_LOG_LEVEL = "LOGLVL"
 # KWD_LOG_FILE = "LOGFILE"
 
-# KWD_TEMP_COMP = "TEMP_COMP"
+KWD_TEMP_COMP = "TEMP_COMP"
+KWD_MAX_LEN_CPU_TEMPS = "CPU_TEMPS"
 
 KWD_DELAY = "DELAY"
 KWD_WAIT = "WAIT"
@@ -101,14 +104,11 @@ KWD_FEED_HUMID = "FEED_HUMID"
 # KWD_DISPL_TOP_X = "TOP_X"
 # KWD_DISPL_TOP_Y = "TOP_Y"
 # KWD_DISPL_TOP_BAR = "TOP_BAR"
-# KWD_MAX_LEN_CPU_TEMPS = "CPU_TEMPS"
 
 
 # =========================================================
 #    C O N S T A N T S   F O R   E N V I R O N   D A T A
 # =========================================================
-
-
 # RGB color palette for values on combo/text screen
 # COLOR_PALETTE = [
 #     RGB_BLUE,       # Dangerously Low
@@ -118,79 +118,18 @@ KWD_FEED_HUMID = "FEED_HUMID"
 #     RGB_RED         # Dangerously High
 # ]         
 
-# Min/max display modes. Must correspond to 'DATA_TYPES' list
-# DISPL_TEMPS = 0     # Temperature
-# DISPL_ALL = 10      # Display all data
+# Min/max display modes.
+IDX_ALL   = 0       # Display all data
+IDX_TEMP  = 1
+IDX_PRESS = 2
+IDX_HUMID = 3
+IDX_LIGHT = 4
+IDX_OXID  = 5
+IDX_REDUC = 6
+IDX_NH3   = 7
+IDX_PM1   = 8
+IDX_PM25  = 9
+IDX_PM10  = 10
 
-# MIN_DISPL = DISPL_TEMPS     
-# MAX_DISPL = DISPL_ALL
-
-# IDX_TEMP  = 0
-# IDX_PRESS = 1
-# IDX_HUMID = 2
-# IDX_LIGHT = 3
-# IDX_OXID  = 4
-# IDX_REDUC = 5
-# IDX_NH3   = 6
-# IDX_PM1   = 7
-# IDX_PM25  = 8
-# IDX_PM10  = 9
-
-
-# List of environment data types
-DATA_TYPES = [
-    "temperature",          # 0
-    "pressure",             # 1
-    "humidity",             # 2
-    "light",                # 3
-    "oxidised",             # 4
-    "reduced",              # 5
-    "nh3",                  # 6
-    "pm1",                  # 7
-    "pm25",                 # 8
-    "pm10"                  # 9
-]
-
-# List of environment data units
-DATA_UNITS = [
-    "C",
-    "hPa",
-    "%",
-    "Lux",
-    "kO",
-    "kO",
-    "kO",
-    "ug/m3",
-    "ug/m3",
-    "ug/m3"
-]
-
-# Define your own warning limits for environment data
-#
-# The (data) limits definition follows the same order as 
-# the 'DATA_TYPES' list.
-#
-# Example limits explanation for temperature:
-# [4,18,28,35] means:
-#  -273.15 ... 4     -> Dangerously Low
-#        4 ... 18    -> Low
-#       18 ... 28    -> Normal
-#       28 ... 35    -> High
-#       35 ... MAX   -> Dangerously High
-#
-# DISCLAIMER: The limits provided here are just examples and come
-# with NO WARRANTY. The authors of this example code claim
-# NO RESPONSIBILITY if reliance on the following values or this
-# code in general leads to ANY DAMAGES or DEATH.
-DATA_LIMITS = [
-    [4, 18, 25, 35],
-    [250, 650, 1013.25, 1015],
-    [20, 30, 60, 70],
-    [-1, -1, 30000, 100000],
-    [-1, -1, 40, 50],
-    [-1, -1, 450, 550],
-    [-1, -1, 200, 300],
-    [-1, -1, 50, 100],
-    [-1, -1, 50, 100],
-    [-1, -1, 50, 100]
-]
+MIN_DISPL = IDX_ALL     # Cannot be smaller than smallest IDX_xx value     
+MAX_DISPL = IDX_PM10    # Cannot be larger than largest IDX_xx value 

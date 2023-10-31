@@ -27,12 +27,13 @@ import sys
 import asyncio
 import signal
 
-from collections import deque
 from random import randint
 from pathlib import Path
+from collections import deque
 
 import constants as const
-from common import exit_now, check_wifi, get_setting, EXIT_NOW
+from common import get_RPI_serial_num, exit_now, check_wifi, EXIT_NOW
+from enviro_data import EnviroData
 
 try:
     import tomllib
@@ -54,50 +55,25 @@ LOGFILE = "f451-piENVIRO.log"
 LOGNAME = "f451-piENVIRO"
 
 
-def debug_config_info(dev):
-    dev.log_debug("-- Config Settings --")
-    dev.log_debug(f"DISPL ROT:   {dev.displRotation}")
-    dev.log_debug(f"DISPL MODE:  {dev.displMode}")
-    dev.log_debug(f"DISPL PROGR: {dev.displProgress}")
-    dev.log_debug(f"DISPL SLEEP: {dev.displSleep}")
-    dev.log_debug(f"SLEEP CNTR:  {dev.sleepCounter}")
-    dev.log_debug(f"IO DEL:      {dev.get_config(const.KWD_DELAY, const.DEF_DELAY)}")
-    dev.log_debug(f"IO WAIT:     {dev.get_config(const.KWD_WAIT, const.DEF_WAIT)}")
-    dev.log_debug(f"IO THROTTLE: {dev.get_config(const.KWD_THROTTLE, const.DEF_THROTTLE)}")
+def debug_config_info():
+    logger.log_debug("-- Config Settings --")
+    logger.log_debug(f"DISPL ROT:   {enviro.displRotation}")
+    logger.log_debug(f"DISPL MODE:  {enviro.displMode}")
+    logger.log_debug(f"DISPL PROGR: {enviro.displProgress}")
+    logger.log_debug(f"DISPL SLEEP: {enviro.displSleep}")
+    logger.log_debug(f"SLEEP CNTR:  {enviro.displSleepCntr}")
+    logger.log_debug(f"IO DEL:      {config.get(const.KWD_DELAY, const.DEF_DELAY)}")
+    logger.log_debug(f"IO WAIT:     {config.get(const.KWD_WAIT, const.DEF_WAIT)}")
+    logger.log_debug(f"IO THROTTLE: {config.get(const.KWD_THROTTLE, const.DEF_THROTTLE)}")
 
     # Display Raspberry Pi serial and Wi-Fi status
-    dev.log_debug(f"Raspberry Pi serial: {piEnviro.serialNum}")
-    dev.log_debug(f"Wi-Fi: {(const.STATUS_YES if check_wifi() else const.STATUS_NO)}")
+    logger.log_debug(f"Raspberry Pi serial: {get_RPI_serial_num()}")
+    logger.log_debug(f"Wi-Fi: {(const.STATUS_YES if check_wifi() else const.STATUS_UNKNOWN)}")
 
 
 # =========================================================
 #              H E L P E R   F U N C T I O N S
 # =========================================================
-def init_logger(config, appDir):
-    logLvl = get_setting(config, const.KWD_LOG_LEVEL, const.LOG_INFO)
-    logFile = get_setting(config, const.KWD_LOG_FILE)
-    logFileFP = appDir.parent.joinpath(logFile) if logFile else None
-
-    return f451Logger("f451-piENVIRO", logLvl, logFileFP)
-
-
-def init_uploader(config):
-    return None
-
-
-def init_data_set(defVal, maxLen):
-    dataSet = {}
-
-    for idx, dt in enumerate(const.DATA_TYPES):
-        dataSet[dt] = {
-            "data": deque([defVal] * maxLen, maxlen=maxLen),
-            "unit": const.DATA_UNITS[idx],
-            "limits": const.DATA_LIMITS[idx]
-        }
-
-    return dataSet
-
-
 def process_environ_data(temp, press, humid, pm25, pm10):
     """Process environment data
 
@@ -115,6 +91,7 @@ def process_environ_data(temp, press, humid, pm25, pm10):
 
 
 def prep_data_row(inData, label=""):
+    """??? WIP ???"""
     row = {
         "data": inData["data"],
         "unit": inData["unit"],
@@ -125,6 +102,7 @@ def prep_data_row(inData, label=""):
     return row
 
 def prep_data_for_text_display(inData):
+    """??? WIP ???"""
     data = []
 
     for key, item in inData.items():
@@ -139,13 +117,13 @@ def save_data(idx, data, log=False):
     Save environment data so that it can be used 
     in graphs later and update log as needed
     """
-    global enviroDataSet
+    global enviroData
 
     type = const.DATA_TYPES[idx]
-    enviroDataSet[type]["data"].append(data)
+    enviroData[type]["data"].append(data)
 
     if log:
-        piEnviro.log_info("{}: {:.1f} {}".format(type[:4], data, enviroDataSet[type]["unit"]))
+        logger.log_info("{}: {:.1f} {}".format(type[:4], data, enviroData[type]["unit"]))
 
 
 def save_data_and_display_graph(type, data, log=False):
@@ -154,15 +132,15 @@ def save_data_and_display_graph(type, data, log=False):
     This function saves data to global data set and then 
     displays data and corresponmding text on 0.96" LCD
     """
-    global enviroDataSet
+    global enviroData
 
-    enviroDataSet[type]["data"].append(data)
-    piEnviro.display_as_graph(
-        prep_data_row(enviroDataSet[type]["data"], type)
+    enviroData[type]["data"].append(data)
+    enviro.display_as_graph(
+        prep_data_row(enviroData[type]["data"], type)
     )
 
     if log:
-        piEnviro.log_info("{}: {:.1f} {}".format(type[:4], data, enviroDataSet[type]["unit"]))
+        logger.log_info("{}: {:.1f} {}".format(type[:4], data, enviroData[type]["unit"]))
 
 
 def upload_environ_data(values, id):
@@ -263,8 +241,8 @@ if __name__ == '__main__':
     enviro = f451Enviro(config)
     enviro.display_init()
 
-    # enviroDataSet = init_data_set(1, piEnviro.widthLCD)
-    enviroDataSet = init_data_set(1, 10)
+    # enviroData = init_data_set(1, enviro.widthLCD)
+    enviroData = EnviroData(1, 10)
 
     try:
         tempsFeed = uploader.aio_feed_info(config.get(const.KWD_FEED_TEMPS))
@@ -281,165 +259,157 @@ if __name__ == '__main__':
     ioWait = config.get(const.KWD_WAIT, const.DEF_WAIT)
     ioThrottle = config.get(const.KWD_THROTTLE, const.DEF_THROTTLE)
 
+    logData = False                         # Log all data
     delayCounter = maxDelay = ioDelay       # Ensure that we upload first reading
 
-    # vvvvvvvv MOVE TO ENVIRO MODULE vvvvvvv
-    tempCompFactor = piEnviro.get_config(const.KWD_TEMP_COMP, const.DEF_TEMP_COMP_FACTOR)
-    piEnviro.sleepCounter = piEnviro.displSleep   # Reset counter for screen blanking
-    # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    # Initialize core data queues
+    tempCompFactor = config.get(const.KWD_TEMP_COMP, const.DEF_TEMP_COMP_FACTOR)
+    cpuTempsQMaxLen = config.get(const.KWD_MAX_LEN_CPU_TEMPS, const.MAX_LEN_CPU_TEMPS)
+    cpuTempsQ = deque([enviro.get_CPU_temp(False)] * cpuTempsQMaxLen, maxlen=cpuTempsQMaxLen)
 
-    # # Initialize core data queues
-    # cpuTempsQMaxLen = piEnviro.get_config(const.KWD_MAX_LEN_CPU_TEMPS, const.MAX_LEN_CPU_TEMPS)
-    # cpuTempsQ = deque([piEnviro.get_CPU_temp()] * cpuTempsQMaxLen, maxlen=cpuTempsQMaxLen)
-
-    # # Log core info
-    # debug_config_info(piEnviro)
-    # piEnviro.log_info("-- START Data Logging --")
+    # Log core info
+    debug_config_info()
+    logger.log_info("-- START Data Logging --")
 
     # # -- Main application loop --
-    # displayUpdate = 0
-    # timeSinceUpdate = 0
-    # timeUpdate = time.time()
-    # tempCounter = 0
+    displayUpdate = 0
+    timeSinceUpdate = 0
+    timeUpdate = time.time()
+    tempCounter = 0
 
-    # while not EXIT_NOW:
-    #     tempCounter += 1
-    #     EXIT_NOW = (tempCounter >= 10)
+    while not EXIT_NOW:
+        tempCounter += 1
+        EXIT_NOW = (tempCounter >= 10)
 
-    #     timeCurrent = time.time()
-    #     timeSinceUpdate = timeCurrent - timeUpdate
+        timeCurrent = time.time()
+        timeSinceUpdate = timeCurrent - timeUpdate
 
-    #     # Get raw temp from sensor
-    #     tempRaw = piEnviro.get_temperature()
+        # Get raw temp from sensor
+        tempRaw = enviro.get_temperature()
 
-    #     # Get current CPU temp, add to queue, and calculate new average
-    #     #
-    #     # NOTE: This feature relies on the 'vcgencmd' which is found on
-    #     #       RPIs. If this is not run on a RPI (e.g. during testing),
-    #     #       then we need to neutralize the 'cpuTemp' compensation. 
-    #     try:
-    #         cpuTemp = piEnviro.get_CPU_temp()
-    #     except FileNotFoundError:
-    #         cpuTemp = tempRaw
+        # Get current CPU temp, add to queue, and calculate new average
+        #
+        # NOTE: This feature relies on the 'vcgencmd' which is found on
+        #       RPIs. If this is not run on a RPI (e.g. during testing),
+        #       then we need to neutralize the 'cpuTemp' compensation. 
+        cpuTempsQ.append(enviro.get_CPU_temp(False))
+        cpuTempAvg = sum(cpuTempsQ) / float(cpuTempsQMaxLen)
 
-    #     cpuTempsQ.append(cpuTemp)
-    #     cpuTempAvg = sum(cpuTempsQ) / float(cpuTempsQMaxLen)
+        # Smooth out with some averaging to decrease jitter
+        tempComp = tempRaw - ((cpuTempAvg - tempRaw) / tempCompFactor)
 
-    #     # Smooth out with some averaging to decrease jitter
-    #     tempComp = tempRaw - ((cpuTempAvg - tempRaw) / tempCompFactor)
+        pressRaw = enviro.get_pressure()
+        humidRaw = enviro.get_humidity()
 
-    #     pressRaw = piEnviro.get_pressure()
-    #     humidRaw = piEnviro.get_humidity()
+        pmData = enviro.get_particles()
+        pm25Raw = pmData.pm_ug_per_m3(2.5)      # TO DO: fix magic number
+        pm10Raw = pmData.pm_ug_per_m3(10)       # TO DO: fix magic number
 
-    #     pmData = piEnviro.get_particles()
-    #     pm25Raw = pmData.pm_ug_per_m3(2.5)      # TO DO: fix magic number
-    #     pm10Raw = pmData.pm_ug_per_m3(10)       # TO DO: fix magic number
+        # Is it time to upload data?
+        # if timeSinceUpdate > ioDelay:
+        #     resp = upload_environ_data(
+        #         process_environ_data(tempComp, pressRaw * 100, humidRaw, pm25Raw, pm10Raw), 
+        #         enviro.get_ID(const.DEF_ID_PREFIX)
+        #     )
+        #     timeUpdate = timeCurrent
+        #     logger.log_info(f"Upload Response: {const.STATUS_SUCCESS if resp else const.STATUS_FAILURE}")
 
-    #     # Is it time to upload data?
-    #     if timeSinceUpdate > ioDelay:
-    #         resp = upload_environ_data(
-    #             process_environ_data(tempComp, pressRaw * 100, humidRaw, pm25Raw, pm10Raw), 
-    #             piEnviro.get_ID(const.DEF_ID_PREFIX)
-    #         )
-    #         timeUpdate = timeCurrent
-    #         piEnviro.log_info(f"Upload Response: {const.STATUS_SUCCESS if resp else const.STATUS_FAILURE}")
+        # If proximity crosses threshold, toggle the display mode
+        proximity = enviro.get_proximity()
 
-    #     # If proximity crosses threshold, toggle the display mode
-    #     proximity = piEnviro.get_proximity()
+        if proximity > const.PROX_LIMIT and (timeCurrent - displayUpdate) > const.PROX_DEBOUNCE:
+            enviro.displMode = (enviro.displMode + 1) % (const.MAX_DISPL + 1)
+            displayUpdate = timeCurrent
 
-    #     if proximity > const.PROX_LIMIT and (timeCurrent - displayUpdate) > const.PROX_DEBOUNCE:
-    #         piEnviro.displMode = (piEnviro.displMode + 1) % (const.MAX_DISPL + 1)
-    #         displayUpdate = timeCurrent
+        # Check display mode. Each mode corresponds to a data type
+        if enviro.displMode == const.IDX_TEMP:        # type = "temperature"
+            enviroData.temperature.data.append(tempComp)
+            enviro.display_as_graph(enviroData.temperature.as_dict())
+            if logData:
+                logger.log_info("{}: {:.1f} {}".format(type[:4], tempComp, enviroData.temperature.unit))
 
-    #     # Check display mode. Each mode corresponds to a data type
-    #     if piEnviro.displMode == const.IDX_TEMP:        # type = "temperature"
+    #     elif enviro.displMode == const.IDX_PRESS:     # type = "pressure"
     #         save_data_and_display_graph(
-    #             const.DATA_TYPES[piEnviro.displMode], 
-    #             tempComp
-    #         )
-
-    #     elif piEnviro.displMode == const.IDX_PRESS:     # type = "pressure"
-    #         save_data_and_display_graph(
-    #             const.DATA_TYPES[piEnviro.displMode], 
+    #             const.DATA_TYPES[enviro.displMode], 
     #             pressRaw
     #         )
 
-    #     elif piEnviro.displMode == const.IDX_HUMID:     # type = "humidity"
+    #     elif enviro.displMode == const.IDX_HUMID:     # type = "humidity"
     #         save_data_and_display_graph(
-    #             const.DATA_TYPES[piEnviro.displMode], 
+    #             const.DATA_TYPES[enviro.displMode], 
     #             humidRaw
     #         )
 
-    #     elif piEnviro.displMode == const.IDX_LIGHT:     # type = "light"
-    #         data = piEnviro.get_lux() if (proximity < 10) else 1    # TO DO: fix magic number
+    #     elif enviro.displMode == const.IDX_LIGHT:     # type = "light"
+    #         data = enviro.get_lux() if (proximity < 10) else 1    # TO DO: fix magic number
     #         save_data_and_display_graph(
-    #             const.DATA_TYPES[piEnviro.displMode], 
+    #             const.DATA_TYPES[enviro.displMode], 
     #             data
     #         )
 
-    #     elif piEnviro.displMode == const.IDX_OXID:      # type = "oxidised"
-    #         data = piEnviro.get_gas_data()
+    #     elif enviro.displMode == const.IDX_OXID:      # type = "oxidised"
+    #         data = enviro.get_gas_data()
     #         save_data_and_display_graph(
-    #             const.DATA_TYPES[piEnviro.displMode], 
+    #             const.DATA_TYPES[enviro.displMode], 
     #             data.oxidising / 1000
     #         )
 
-    #     elif piEnviro.displMode == const.IDX_REDUC:     # type = "reduced"
-    #         data = piEnviro.get_gas_data()
+    #     elif enviro.displMode == const.IDX_REDUC:     # type = "reduced"
+    #         data = enviro.get_gas_data()
     #         save_data_and_display_graph(
-    #             const.DATA_TYPES[piEnviro.displMode], 
+    #             const.DATA_TYPES[enviro.displMode], 
     #             data.reducing / 1000
     #         )
 
-    #     elif piEnviro.displMode == const.IDX_NH3:       # type = "nh3"
-    #         data = piEnviro.get_gas_data()
+    #     elif enviro.displMode == const.IDX_NH3:       # type = "nh3"
+    #         data = enviro.get_gas_data()
     #         save_data_and_display_graph(
-    #             const.DATA_TYPES[piEnviro.displMode], 
+    #             const.DATA_TYPES[enviro.displMode], 
     #             data.nh3 / 1000
     #         )
 
-    #     elif piEnviro.displMode == const.IDX_PM1:       # type = "pm1"
+    #     elif enviro.displMode == const.IDX_PM1:       # type = "pm1"
     #         save_data_and_display_graph(
-    #             const.DATA_TYPES[piEnviro.displMode], 
+    #             const.DATA_TYPES[enviro.displMode], 
     #             float(pmData.pm_ug_per_m3(1.0))
     #         )
 
-    #     elif piEnviro.displMode == const.IDX_PM25:      # type = "pm25"
+    #     elif enviro.displMode == const.IDX_PM25:      # type = "pm25"
     #         save_data_and_display_graph(
-    #             const.DATA_TYPES[piEnviro.displMode], 
+    #             const.DATA_TYPES[enviro.displMode], 
     #             float(pm25Raw)
     #         )
 
-    #     elif piEnviro.displMode == const.IDX_PM10:      # type = "pm10"
+    #     elif enviro.displMode == const.IDX_PM10:      # type = "pm10"
     #         save_data_and_display_graph(
-    #             const.DATA_TYPES[piEnviro.displMode], 
+    #             const.DATA_TYPES[enviro.displMode], 
     #             float(pm10Raw)
     #         )
 
     #     else:                           # Display everything on one screen
     #         save_data(const.IDX_TEMP, tempComp)
     #         save_data(const.IDX_PRESS, pressRaw)
-    #         piEnviro.display_as_text(prep_data_for_text_display(enviroDataSet))
+    #         enviro.display_as_text(prep_data_for_text_display(enviroData))
 
     #         save_data(const.IDX_HUMID, humidRaw)
-    #         data = piEnviro.get_lux() if (proximity < 10) else 1    # TO DO: fix magic number
+    #         data = enviro.get_lux() if (proximity < 10) else 1    # TO DO: fix magic number
     #         save_data(const.IDX_LIGHT, data)
-    #         piEnviro.display_as_text(prep_data_for_text_display(enviroDataSet))
+    #         enviro.display_as_text(prep_data_for_text_display(enviroData))
 
-    #         data = piEnviro.get_gas_data()
+    #         data = enviro.get_gas_data()
     #         save_data(const.IDX_OXID, data.oxidising / 1000)
     #         save_data(const.IDX_REDUC, data.reducing / 1000)
     #         save_data(const.IDX_NH3, data.nh3 / 1000)
-    #         piEnviro.display_as_text(prep_data_for_text_display(enviroDataSet))
+    #         enviro.display_as_text(prep_data_for_text_display(enviroData))
 
     #         save_data(const.IDX_PM1, float(pmData.pm_ug_per_m3(1.0)))
     #         save_data(const.IDX_PM25, float(pm25Raw))
     #         save_data(const.IDX_PM10, float(pm10Raw))
-    #         piEnviro.display_as_text(prep_data_for_text_display(enviroDataSet))
+    #         enviro.display_as_text(prep_data_for_text_display(enviroData))
 
-    # # A bit of clean-up before we exit
-    # piEnviro.log_info("-- END Data Logging --")
-    # piEnviro.display_reset()
-    # piEnviro.display_off()
-    # piEnviro.pprint(enviroDataSet)
+    # A bit of clean-up before we exit
+    logger.log_info("-- END Data Logging --")
+    enviro.display_reset()
+    enviro.display_off()
+    logger.debug(dict(enviroData))
     print("Beep boop")
