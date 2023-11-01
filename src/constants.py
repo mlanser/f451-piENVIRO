@@ -34,9 +34,6 @@ MAX_LEN_CPU_TEMPS = 5       # Max number of CPU temps
 # DISPL_TOP_Y = 2
 # DISPL_TOP_BAR = 25          # Height (in px) of top bar
 
-# PROX_DEBOUNCE = 0.5         # Delay to debounce proximity sensor on 'tap'
-# PROX_LIMIT = 1500           # Threshold for proximity sensor to detect 'tap'
-
 # DEF_LCD_OFFSET_X = 1        # Default horizontal offset for LCD
 # DEF_LCD_OFFSET_Y = 1        # Default vertical offseet for LCD 
 
@@ -46,7 +43,8 @@ DEF_THROTTLE = 120          # Default additional delay on 'ThrottlingError'
 
 # DEF_ROTATION = 0
 # DEF_SLEEP = 600
-# DEF_ID_PREFIX = "raspi-"    # Default prefix for ID string
+
+DEF_ID_PREFIX = "raspi-"    # Default prefix for ID string
 
 DEF_TEMP_COMP_FACTOR = 1    # Default compensation factor for temperature
 
@@ -95,15 +93,11 @@ KWD_FEED_TEMPS = "FEED_TEMPS"
 KWD_FEED_PRESS = "FEED_PRESS"
 KWD_FEED_HUMID = "FEED_HUMID"
 
-# KWD_DATA_TEMPS = "temperature"
-# KWD_DATA_PRESS = "pressure"
-# KWD_DATA_HUMID = "humidity"
+KWD_DATA_TEMPS = "temperature"
+KWD_DATA_PRESS = "pressure"
+KWD_DATA_HUMID = "humidity"
 # KWD_DATA_P2 = "P2"
 # KWD_DATA_P1 = "P1"
-
-# KWD_DISPL_TOP_X = "TOP_X"
-# KWD_DISPL_TOP_Y = "TOP_Y"
-# KWD_DISPL_TOP_BAR = "TOP_BAR"
 
 
 # =========================================================

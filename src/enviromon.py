@@ -32,7 +32,7 @@ from pathlib import Path
 from collections import deque
 
 import constants as const
-from common import get_RPI_serial_num, exit_now, check_wifi, EXIT_NOW
+from common import get_RPI_serial_num, get_RPI_ID, exit_now, check_wifi, EXIT_NOW
 from enviro_data import EnviroData
 
 try:
@@ -42,7 +42,7 @@ except ModuleNotFoundError:
 
 from f451_logger.logger import Logger as f451Logger
 from f451_uploader.uploader import Uploader as f451Uploader
-from f451_enviro.enviro import Enviro as f451Enviro
+from f451_enviro.enviro import Enviro as f451Enviro, PROX_LIMIT, PROX_DEBOUNCE
 
 from Adafruit_IO import RequestError, ThrottlingError
 
@@ -71,147 +71,113 @@ def debug_config_info():
     logger.log_debug(f"Wi-Fi: {(const.STATUS_YES if check_wifi() else const.STATUS_UNKNOWN)}")
 
 
-# =========================================================
-#              H E L P E R   F U N C T I O N S
-# =========================================================
-def process_environ_data(temp, press, humid, pm25, pm10):
-    """Process environment data
+# def process_environ_data(temp, press, humid, pm25, pm10):
+#     """Process environment data
 
-    Process data from BME280 and PMS5003 and return as dict
-    """
-    data = {}
+#     Process data from BME280 and PMS5003 and return as dict
+#     """
+#     data = {}
 
-    data[const.KWD_DATA_TEMPS] = "{:.2f}".format(temp)
-    data[const.KWD_DATA_PRESS] = "{:.2f}".format(press)
-    data[const.KWD_DATA_HUMID] = "{:.2f}".format(humid)
-    data[const.KWD_DATA_P2] = str(pm25)
-    data[const.KWD_DATA_P1] = str(pm10)
+#     data[const.KWD_DATA_TEMPS] = "{:.2f}".format(temp)
+#     data[const.KWD_DATA_PRESS] = "{:.2f}".format(press)
+#     data[const.KWD_DATA_HUMID] = "{:.2f}".format(humid)
+#     data[const.KWD_DATA_P2] = str(pm25)
+#     data[const.KWD_DATA_P1] = str(pm10)
 
-    return data
+#     return data
 
 
-def prep_data_row(inData, label=""):
-    """??? WIP ???"""
-    row = {
-        "data": inData["data"],
-        "unit": inData["unit"],
-        "limits": inData["limits"],
-        "label": label.capitalize()
-    }
+# def upload_environ_data(values, id):
+#     pm_values = dict(i for i in values.items() if i[0].startswith("P"))
+#     temp_values = dict(i for i in values.items() if not i[0].startswith("P"))
 
-    return row
+#     pm_values_json = [{"value_type": key, "value": val}
+#                     for key, val in pm_values.items()]
+#     temp_values_json = [{"value_type": key, "value": val}
+#                         for key, val in temp_values.items()]
+#     # resp_1 = requests.post(
+#     #     "https://api.luftdaten.info/v1/push-sensor-data/",
+#     #     json={
+#     #         "software_version": "enviro-plus 0.0.1",
+#     #         "sensordatavalues": pm_values_json
+#     #     },
+#     #     headers={
+#     #         "X-PIN": "1",
+#     #         "X-Sensor": id,
+#     #         "Content-Type": "application/json",
+#     #         "cache-control": "no-cache"
+#     #     }
+#     # )
 
-def prep_data_for_text_display(inData):
-    """??? WIP ???"""
-    data = []
+#     # resp_2 = requests.post(
+#     #     "https://api.luftdaten.info/v1/push-sensor-data/",
+#     #     json={
+#     #         "software_version": "enviro-plus 0.0.1",
+#     #         "sensordatavalues": temp_values_json
+#     #     },
+#     #     headers={
+#     #         "X-PIN": "11",
+#     #         "X-Sensor": id,
+#     #         "Content-Type": "application/json",
+#     #         "cache-control": "no-cache"
+#     #     }
+#     # )
 
-    for key, item in inData.items():
-        data.append(prep_data_row(item, key))
-
-    return data
-
-
-def save_data(idx, data, log=False):
-    """Save environment data
-
-    Save environment data so that it can be used 
-    in graphs later and update log as needed
-    """
-    global enviroData
-
-    type = const.DATA_TYPES[idx]
-    enviroData[type]["data"].append(data)
-
-    if log:
-        logger.log_info("{}: {:.1f} {}".format(type[:4], data, enviroData[type]["unit"]))
-
-
-def save_data_and_display_graph(type, data, log=False):
-    """Save data and display graph
-
-    This function saves data to global data set and then 
-    displays data and corresponmding text on 0.96" LCD
-    """
-    global enviroData
-
-    enviroData[type]["data"].append(data)
-    enviro.display_as_graph(
-        prep_data_row(enviroData[type]["data"], type)
-    )
-
-    if log:
-        logger.log_info("{}: {:.1f} {}".format(type[:4], data, enviroData[type]["unit"]))
+#     # if resp_1.ok and resp_2.ok:
+#     #     return True
+#     # else:
+#     #     return False
+#     return True
 
 
-def upload_environ_data(values, id):
-    pm_values = dict(i for i in values.items() if i[0].startswith("P"))
-    temp_values = dict(i for i in values.items() if not i[0].startswith("P"))
+async def upload_sensor_data(*args, **kwargs):
+    """Send sensor data to cloud services.
+    
+    This help parses and send enviro data to Adafruit IO 
+    and Arduino Cloud.
 
-    pm_values_json = [{"value_type": key, "value": val}
-                    for key, val in pm_values.items()]
-    temp_values_json = [{"value_type": key, "value": val}
-                        for key, val in temp_values.items()]
-    # resp_1 = requests.post(
-    #     "https://api.luftdaten.info/v1/push-sensor-data/",
-    #     json={
-    #         "software_version": "enviro-plus 0.0.1",
-    #         "sensordatavalues": pm_values_json
-    #     },
-    #     headers={
-    #         "X-PIN": "1",
-    #         "X-Sensor": id,
-    #         "Content-Type": "application/json",
-    #         "cache-control": "no-cache"
-    #     }
-    # )
+    NOTE: This function will upload specific environment 
+          data using the following keywords:
 
-    # resp_2 = requests.post(
-    #     "https://api.luftdaten.info/v1/push-sensor-data/",
-    #     json={
-    #         "software_version": "enviro-plus 0.0.1",
-    #         "sensordatavalues": temp_values_json
-    #     },
-    #     headers={
-    #         "X-PIN": "11",
-    #         "X-Sensor": id,
-    #         "Content-Type": "application/json",
-    #         "cache-control": "no-cache"
-    #     }
-    # )
-
-    # if resp_1.ok and resp_2.ok:
-    #     return True
-    # else:
-    #     return False
-    return True
-
-
-async def send_all_sensor_data(client, tempsData, pressData, humidData):
-    """
-    Send sensor data to Adafruit IO
+          'temperature' - temperature data
+          'pressure'    - barometric pressure
+          'humidity'    - humidity
 
     Args:
-        client:
-            We need full app context client
-        tempsData:
-            'dict' with 'temperature feed' key and temperature data point
-        pressData:
-            'dict' with 'pressure feed' key and pressure data point
-        humidData:
-            'dict' with 'humidity feed' key and humidity data point
-
-    Raises:
-        RequestError:
-            When API request fails
-        ThrottlingError:
-            When exceeding Adafruit IO rate limit
+        args:
+            User can provide single 'dict' with data
+        kwargs:
+            User can provide individual data points as key-value pairs
     """
-    pass
-    # await asyncio.gather(
-    #     client.send_sensor_data(tempsData),
-    #     client.send_sensor_data(pressData),
-    #     client.send_sensor_data(humidData)
-    # )
+    # We combine 'args' and 'kwargs' to allow users to provide a 'dict' with
+    # all data points and/or individual data points (which could override 
+    # values in the 'dict').
+    data = {**args[0], **kwargs} if args and type(args[0]) is dict else kwargs
+
+    sendQ = []
+
+    # Send temperature data ?
+    if const.KWD_DATA_TEMPS in kwargs:
+        sendQ.append(uploader.aio_send_data(tempsFeed.key, data.get(const.KWD_DATA_TEMPS)))
+
+    # Send barometric pressure data ?
+    if const.KWD_FEED_PRESS in kwargs:
+        sendQ.append(uploader.aio_send_data(pressFeed.key, data.get(const.KWD_FEED_PRESS) * 100))
+
+    # Send humidity data ?
+    if const.KWD_DATA_HUMID in kwargs:
+        sendQ.append(uploader.aio_send_data(humidFeed.key, data.get(const.KWD_DATA_HUMID)))
+
+    # pm25 = pm25Raw,
+    # pm10 = pm10Raw, 
+    # deviceID = enviro.get_ID(const.DEF_ID_PREFIX)
+
+    # await asyncio.gather(*sendQ)
+    await asyncio.gather(
+        uploader.aio_send_data(tempsFeed.key, 10),
+        uploader.aio_send_data(pressFeed.key, 20),
+        uploader.aio_send_data(humidFeed.key, 30)
+    )
 
 
 # =========================================================
@@ -259,7 +225,6 @@ if __name__ == '__main__':
     ioWait = config.get(const.KWD_WAIT, const.DEF_WAIT)
     ioThrottle = config.get(const.KWD_THROTTLE, const.DEF_THROTTLE)
 
-    logData = False                         # Log all data
     delayCounter = maxDelay = ioDelay       # Ensure that we upload first reading
 
     # Initialize core data queues
@@ -275,11 +240,12 @@ if __name__ == '__main__':
     displayUpdate = 0
     timeSinceUpdate = 0
     timeUpdate = time.time()
+    uploadDelay = ioDelay
     tempCounter = 0
 
     while not EXIT_NOW:
         tempCounter += 1
-        EXIT_NOW = (tempCounter >= 10)
+        EXIT_NOW = (tempCounter >= 1000)
 
         timeCurrent = time.time()
         timeSinceUpdate = timeCurrent - timeUpdate
@@ -306,110 +272,114 @@ if __name__ == '__main__':
         pm10Raw = pmData.pm_ug_per_m3(10)       # TO DO: fix magic number
 
         # Is it time to upload data?
-        # if timeSinceUpdate > ioDelay:
-        #     resp = upload_environ_data(
-        #         process_environ_data(tempComp, pressRaw * 100, humidRaw, pm25Raw, pm10Raw), 
-        #         enviro.get_ID(const.DEF_ID_PREFIX)
-        #     )
-        #     timeUpdate = timeCurrent
-        #     logger.log_info(f"Upload Response: {const.STATUS_SUCCESS if resp else const.STATUS_FAILURE}")
+        if timeSinceUpdate > 600:
+            try:
+                asyncio.run(upload_sensor_data(
+                    temperature = tempComp, 
+                    pressure = pressRaw * 100, 
+                    humidity = humidRaw, 
+                    pm25 = pm25Raw,
+                    pm10 = pm10Raw, 
+                    deviceID = get_RPI_ID(const.DEF_ID_PREFIX)
+                ))
+
+            except RequestError as e:
+                logger.log_error(f"Application terminated due to REQUEST ERROR: {e}")
+                raise
+
+            except ThrottlingError as e:
+                # Keep increasing 'ioDelay' each time we get a 'ThrottlingError'
+                uploadDelay += ioThrottle
+                
+            else:
+                # Reset 'maxDelay' back to normal 'ioDelay' on successful upload
+                uploadDelay = ioDelay
+                logger.log_info(f"Uploaded: TEMP: {tempComp} - PRESS: {pressRaw * 100} - HUMID: {humidRaw}")
+
+            finally:
+                timeUpdate = timeCurrent
 
         # If proximity crosses threshold, toggle the display mode
         proximity = enviro.get_proximity()
 
-        if proximity > const.PROX_LIMIT and (timeCurrent - displayUpdate) > const.PROX_DEBOUNCE:
+        if proximity > PROX_LIMIT and (timeCurrent - displayUpdate) > PROX_DEBOUNCE:
             enviro.displMode = (enviro.displMode + 1) % (const.MAX_DISPL + 1)
             displayUpdate = timeCurrent
 
         # Check display mode. Each mode corresponds to a data type
-        if enviro.displMode == const.IDX_TEMP:        # type = "temperature"
+        if enviro.displMode == const.IDX_TEMP:          # type = "temperature"
             enviroData.temperature.data.append(tempComp)
             enviro.display_as_graph(enviroData.temperature.as_dict())
-            if logData:
-                logger.log_info("{}: {:.1f} {}".format(type[:4], tempComp, enviroData.temperature.unit))
 
-    #     elif enviro.displMode == const.IDX_PRESS:     # type = "pressure"
-    #         save_data_and_display_graph(
-    #             const.DATA_TYPES[enviro.displMode], 
-    #             pressRaw
-    #         )
+        elif enviro.displMode == const.IDX_PRESS:       # type = "pressure"
+            enviroData.pressure.data.append(pressRaw)
+            enviro.display_as_graph(enviroData.pressure.as_dict())
 
-    #     elif enviro.displMode == const.IDX_HUMID:     # type = "humidity"
-    #         save_data_and_display_graph(
-    #             const.DATA_TYPES[enviro.displMode], 
-    #             humidRaw
-    #         )
+        elif enviro.displMode == const.IDX_HUMID:       # type = "humidity"
+            enviroData.humidity.data.append(humidRaw)
+            enviro.display_as_graph(enviroData.humidity.as_dict())
+                
+        elif enviro.displMode == const.IDX_LIGHT:       # type = "light"
+            data = enviro.get_lux() if (proximity < 10) else 1    # TO DO: fix magic number
+            enviroData.light.data.append(data)
+            enviro.display_as_graph(enviroData.light.as_dict())
 
-    #     elif enviro.displMode == const.IDX_LIGHT:     # type = "light"
-    #         data = enviro.get_lux() if (proximity < 10) else 1    # TO DO: fix magic number
-    #         save_data_and_display_graph(
-    #             const.DATA_TYPES[enviro.displMode], 
-    #             data
-    #         )
+        elif enviro.displMode == const.IDX_OXID:        # type = "oxidised"
+            data = enviro.get_gas_data()
+            enviroData.oxidised.data.append(data.oxidising / 1000)
+            enviro.display_as_graph(enviroData.oxidised.as_dict())
+                
+        elif enviro.displMode == const.IDX_REDUC:       # type = "reduced"
+            data = enviro.get_gas_data()
+            enviroData.reduced.data.append(data.reducing / 1000)
+            enviro.display_as_graph(enviroData.reduced.as_dict())
 
-    #     elif enviro.displMode == const.IDX_OXID:      # type = "oxidised"
-    #         data = enviro.get_gas_data()
-    #         save_data_and_display_graph(
-    #             const.DATA_TYPES[enviro.displMode], 
-    #             data.oxidising / 1000
-    #         )
+        elif enviro.displMode == const.IDX_NH3:         # type = "nh3"
+            data = enviro.get_gas_data()
+            enviroData.nh3.data.append(data.nh3 / 1000)
+            enviro.display_as_graph(enviroData.nh3.as_dict())
 
-    #     elif enviro.displMode == const.IDX_REDUC:     # type = "reduced"
-    #         data = enviro.get_gas_data()
-    #         save_data_and_display_graph(
-    #             const.DATA_TYPES[enviro.displMode], 
-    #             data.reducing / 1000
-    #         )
+        elif enviro.displMode == const.IDX_PM1:         # type = "pm1"
+            enviroData.pm1.data.append(float(pmData.pm_ug_per_m3(1.0)))
+            enviro.display_as_graph(enviroData.pm1.as_dict())
 
-    #     elif enviro.displMode == const.IDX_NH3:       # type = "nh3"
-    #         data = enviro.get_gas_data()
-    #         save_data_and_display_graph(
-    #             const.DATA_TYPES[enviro.displMode], 
-    #             data.nh3 / 1000
-    #         )
+        elif enviro.displMode == const.IDX_PM25:        # type = "pm25"
+            enviroData.pm25.data.append(float(pm25Raw))
+            enviro.display_as_graph(enviroData.pm25.as_dict())
 
-    #     elif enviro.displMode == const.IDX_PM1:       # type = "pm1"
-    #         save_data_and_display_graph(
-    #             const.DATA_TYPES[enviro.displMode], 
-    #             float(pmData.pm_ug_per_m3(1.0))
-    #         )
+        elif enviro.displMode == const.IDX_PM10:        # type = "pm10"
+            enviroData.pm10.data.append(float(pm10Raw))
+            enviro.display_as_graph(enviroData.pm10.as_dict())
 
-    #     elif enviro.displMode == const.IDX_PM25:      # type = "pm25"
-    #         save_data_and_display_graph(
-    #             const.DATA_TYPES[enviro.displMode], 
-    #             float(pm25Raw)
-    #         )
+        else:                                           # Display everything on one screen
+            enviroData.temperature.data.append(tempComp)
+            enviroData.pressure.data.append(pressRaw)
+            enviro.display_as_text(enviroData.as_list())
 
-    #     elif enviro.displMode == const.IDX_PM10:      # type = "pm10"
-    #         save_data_and_display_graph(
-    #             const.DATA_TYPES[enviro.displMode], 
-    #             float(pm10Raw)
-    #         )
+            enviroData.humidity.data.append(humidRaw)
+            data = enviro.get_lux() if (proximity < 10) else 1    # TODO: fix magic numbers
+            enviroData.light.data.append(data)
+            enviro.display_as_text(enviroData.as_list())
 
-    #     else:                           # Display everything on one screen
-    #         save_data(const.IDX_TEMP, tempComp)
-    #         save_data(const.IDX_PRESS, pressRaw)
-    #         enviro.display_as_text(prep_data_for_text_display(enviroData))
+            data = enviro.get_gas_data()
+            enviroData.oxidised.data.append(data.oxidising / 1000)
+            enviroData.reduced.data.append(data.reducing / 1000)
+            enviroData.nh3.data.append(data.nh3 / 1000)
+            enviro.display_as_text(enviroData.as_list())
 
-    #         save_data(const.IDX_HUMID, humidRaw)
-    #         data = enviro.get_lux() if (proximity < 10) else 1    # TO DO: fix magic number
-    #         save_data(const.IDX_LIGHT, data)
-    #         enviro.display_as_text(prep_data_for_text_display(enviroData))
-
-    #         data = enviro.get_gas_data()
-    #         save_data(const.IDX_OXID, data.oxidising / 1000)
-    #         save_data(const.IDX_REDUC, data.reducing / 1000)
-    #         save_data(const.IDX_NH3, data.nh3 / 1000)
-    #         enviro.display_as_text(prep_data_for_text_display(enviroData))
-
-    #         save_data(const.IDX_PM1, float(pmData.pm_ug_per_m3(1.0)))
-    #         save_data(const.IDX_PM25, float(pm25Raw))
-    #         save_data(const.IDX_PM10, float(pm10Raw))
-    #         enviro.display_as_text(prep_data_for_text_display(enviroData))
+            enviroData.pm1.data.append(float(pmData.pm_ug_per_m3(1.0)))
+            enviroData.pm25.data.append(float(pm25Raw))
+            enviroData.pm10.data.append(float(pm10Raw))
+            enviro.display_as_text(enviroData.as_list())
 
     # A bit of clean-up before we exit
     logger.log_info("-- END Data Logging --")
     enviro.display_reset()
     enviro.display_off()
-    logger.debug(dict(enviroData))
+    # logger.debug(enviroData.as_list())
+    # logger.debug(list(enviroData.__dict__.keys()))
+    logger.debug(tempsFeed.key)
+    logger.debug(pressFeed.key)
+    logger.debug(humidFeed.key)
+
     print("Beep boop")
