@@ -12,7 +12,7 @@ To launch this application from terminal:
 
 This will start the application in the background and it will keep running 
 even after terminal window is closed. Any output will be automatically redirected 
-to the 'pienviro.out' file.
+to the 'enviromon.out' file.
 
 NOTE: This code is based on the 'luftdaten_combined.py' example from the Enviro+ Python
       example files. Main modifications include support for Adafruit.io, using Python 
@@ -22,13 +22,15 @@ NOTE: This code is based on the 'luftdaten_combined.py' example from the Enviro+
       for 'settings.toml', and more.
 """
 
+import argparse
 import time
 import sys
 import asyncio
 import signal
 
-from random import randint
+# from random import randint
 from pathlib import Path
+from datetime import datetime
 from collections import deque
 
 import constants as const
@@ -48,86 +50,97 @@ from Adafruit_IO import RequestError, ThrottlingError
 
 
 # =========================================================
-#          G L O B A L S   A N D   H E L P E R S
+#          G L O B A L    V A R S   &   I N I T S
 # =========================================================
-LOGLVL = "ERROR"
-LOGFILE = "f451-piENVIRO.log"
-LOGNAME = "f451-piENVIRO"
+APP_VERSION = "0.0.1"
+APP_NAME = "f451 piENVIRO - Enviromon"
+APP_DIR = Path(__file__).parent
 
+# Initialize TOML parser and load 'settings.toml' file
+try:
+    with open(APP_DIR.joinpath("settings.toml"), mode="rb") as fp:
+        CONFIG = tomllib.load(fp)
+except tomllib.TOMLDecodeError:
+    sys.exit("Invalid 'settings.toml' file")      
 
+# Initialize logger and IO uploader
+LOGGER = f451Logger(CONFIG)
+UPLOADER = f451Uploader(CONFIG)
+
+# Initialize device instance which includes all sensors
+# and LCD display on Enviro+
+ENVIRO_HAT = f451Enviro(CONFIG)
+
+# Verify that feeds exist
+try:
+    FEED_TEMPS = UPLOADER.aio_feed_info(CONFIG.get(const.KWD_FEED_TEMPS, None))
+    FEED_PRESS = UPLOADER.aio_feed_info(CONFIG.get(const.KWD_FEED_PRESS, None))
+    FEED_HUMID = UPLOADER.aio_feed_info(CONFIG.get(const.KWD_FEED_HUMID, None))
+
+except RequestError as e:
+    LOGGER.log_error(f"Application terminated due to REQUEST ERROR: {e}")
+    sys.exit(1)
+
+# =========================================================
+#              H E L P E R   F U N C T I O N S
+# =========================================================
 def debug_config_info():
-    logger.log_debug("-- Config Settings --")
-    logger.log_debug(f"DISPL ROT:   {enviro.displRotation}")
-    logger.log_debug(f"DISPL MODE:  {enviro.displMode}")
-    logger.log_debug(f"DISPL PROGR: {enviro.displProgress}")
-    logger.log_debug(f"DISPL SLEEP: {enviro.displSleep}")
-    logger.log_debug(f"SLEEP CNTR:  {enviro.displSleepCntr}")
-    logger.log_debug(f"IO DEL:      {config.get(const.KWD_DELAY, const.DEF_DELAY)}")
-    logger.log_debug(f"IO WAIT:     {config.get(const.KWD_WAIT, const.DEF_WAIT)}")
-    logger.log_debug(f"IO THROTTLE: {config.get(const.KWD_THROTTLE, const.DEF_THROTTLE)}")
+    """Print/log some basic debug info."""
+
+    LOGGER.log_debug("-- Config Settings --")
+    LOGGER.log_debug(f"DISPL ROT:   {ENVIRO_HAT.displRotation}")
+    LOGGER.log_debug(f"DISPL MODE:  {ENVIRO_HAT.displMode}")
+    LOGGER.log_debug(f"DISPL PROGR: {ENVIRO_HAT.displProgress}")
+    LOGGER.log_debug(f"DISPL SLEEP: {ENVIRO_HAT.displSleep}")
+    LOGGER.log_debug(f"SLEEP CNTR:  {ENVIRO_HAT.displSleepCntr}")
+    LOGGER.log_debug(f"IO DEL:      {CONFIG.get(const.KWD_DELAY, const.DEF_DELAY)}")
+    LOGGER.log_debug(f"IO WAIT:     {CONFIG.get(const.KWD_WAIT, const.DEF_WAIT)}")
+    LOGGER.log_debug(f"IO THROTTLE: {CONFIG.get(const.KWD_THROTTLE, const.DEF_THROTTLE)}")
 
     # Display Raspberry Pi serial and Wi-Fi status
-    logger.log_debug(f"Raspberry Pi serial: {get_RPI_serial_num()}")
-    logger.log_debug(f"Wi-Fi: {(const.STATUS_YES if check_wifi() else const.STATUS_UNKNOWN)}")
+    LOGGER.log_debug(f"Raspberry Pi serial: {get_RPI_serial_num()}")
+    LOGGER.log_debug(f"Wi-Fi: {(const.STATUS_YES if check_wifi() else const.STATUS_UNKNOWN)}")
 
 
-# def process_environ_data(temp, press, humid, pm25, pm10):
-#     """Process environment data
+def init_cli_parser():
+    """Initialize CLI (ArgParse) parser.
 
-#     Process data from BME280 and PMS5003 and return as dict
-#     """
-#     data = {}
+    Initialize the ArgParse parser with the CLI 'arguments' and
+    return a new parser instance.
 
-#     data[const.KWD_DATA_TEMPS] = "{:.2f}".format(temp)
-#     data[const.KWD_DATA_PRESS] = "{:.2f}".format(press)
-#     data[const.KWD_DATA_HUMID] = "{:.2f}".format(humid)
-#     data[const.KWD_DATA_P2] = str(pm25)
-#     data[const.KWD_DATA_P1] = str(pm10)
+    Returns:
+        ArgParse parser instance
+    """
+    parser = argparse.ArgumentParser(
+        prog=APP_NAME,
+        description=f"{APP_NAME} [v{APP_VERSION}] - read sensor data from Enviro+ HAT and upload to Adafruit IO and/or Arduino Cloud.",
+        epilog="NOTE: This application requires active accounts with corresponding cloud services.",
+    )
 
-#     return data
+    parser.add_argument(
+        "-V",
+        "--version",
+        action="store_true",
+        help="display script version number and exit",
+    )
+    parser.add_argument(
+        "-d",
+        "--debug", 
+        action="store_true", 
+        help="run script in debug mode"
+    )
+    parser.add_argument(
+        "--cron",
+        action="store_true",
+        help="use when running as cron job - run script once and exit",
+    )
+    parser.add_argument(
+        "--noDisplay",
+        action="store_true",
+        help="do not display output on LCD",
+    )
 
-
-# def upload_environ_data(values, id):
-#     pm_values = dict(i for i in values.items() if i[0].startswith("P"))
-#     temp_values = dict(i for i in values.items() if not i[0].startswith("P"))
-
-#     pm_values_json = [{"value_type": key, "value": val}
-#                     for key, val in pm_values.items()]
-#     temp_values_json = [{"value_type": key, "value": val}
-#                         for key, val in temp_values.items()]
-#     # resp_1 = requests.post(
-#     #     "https://api.luftdaten.info/v1/push-sensor-data/",
-#     #     json={
-#     #         "software_version": "enviro-plus 0.0.1",
-#     #         "sensordatavalues": pm_values_json
-#     #     },
-#     #     headers={
-#     #         "X-PIN": "1",
-#     #         "X-Sensor": id,
-#     #         "Content-Type": "application/json",
-#     #         "cache-control": "no-cache"
-#     #     }
-#     # )
-
-#     # resp_2 = requests.post(
-#     #     "https://api.luftdaten.info/v1/push-sensor-data/",
-#     #     json={
-#     #         "software_version": "enviro-plus 0.0.1",
-#     #         "sensordatavalues": temp_values_json
-#     #     },
-#     #     headers={
-#     #         "X-PIN": "11",
-#     #         "X-Sensor": id,
-#     #         "Content-Type": "application/json",
-#     #         "cache-control": "no-cache"
-#     #     }
-#     # )
-
-#     # if resp_1.ok and resp_2.ok:
-#     #     return True
-#     # else:
-#     #     return False
-#     return True
+    return parser
 
 
 async def upload_sensor_data(*args, **kwargs):
@@ -158,133 +171,141 @@ async def upload_sensor_data(*args, **kwargs):
 
     # Send temperature data ?
     if const.KWD_DATA_TEMPS in kwargs:
-        sendQ.append(uploader.aio_send_data(tempsFeed.key, data.get(const.KWD_DATA_TEMPS)))
+        # sendQ.append(UPLOADER.aio_send_data(FEED_TEMPS, data.get(const.KWD_DATA_TEMPS)))
+        sendQ.append(UPLOADER.aio_send_data(FEED_TEMPS.key, data.get(const.KWD_DATA_TEMPS)))
 
     # Send barometric pressure data ?
-    if const.KWD_FEED_PRESS in kwargs:
-        sendQ.append(uploader.aio_send_data(pressFeed.key, data.get(const.KWD_FEED_PRESS) * 100))
+    if const.KWD_DATA_PRESS in kwargs:
+        # sendQ.append(UPLOADER.aio_send_data(FEED_PRESS, data.get(const.KWD_DATA_PRESS)))
+        sendQ.append(UPLOADER.aio_send_data(FEED_PRESS.key, data.get(const.KWD_DATA_PRESS)))
 
     # Send humidity data ?
     if const.KWD_DATA_HUMID in kwargs:
-        sendQ.append(uploader.aio_send_data(humidFeed.key, data.get(const.KWD_DATA_HUMID)))
+        # sendQ.append(UPLOADER.aio_send_data(FEED_HUMID, data.get(const.KWD_DATA_HUMID)))
+        sendQ.append(UPLOADER.aio_send_data(FEED_HUMID.key, data.get(const.KWD_DATA_HUMID)))
 
     # pm25 = pm25Raw,
     # pm10 = pm10Raw, 
-    # deviceID = enviro.get_ID(const.DEF_ID_PREFIX)
+    # deviceID = ENVIRO_HAT.get_ID(const.DEF_ID_PREFIX)
 
-    # await asyncio.gather(*sendQ)
-    await asyncio.gather(
-        uploader.aio_send_data(tempsFeed.key, 10),
-        uploader.aio_send_data(pressFeed.key, 20),
-        uploader.aio_send_data(humidFeed.key, 30)
-    )
+    await asyncio.gather(*sendQ)
 
 
 # =========================================================
 #      M A I N   F U N C T I O N    /   A C T I O N S
 # =========================================================
-if __name__ == '__main__':
+def main(cliArgs=None):
+    """Core function to run through demo.
+
+    This function will run through one or more 'demo' scenarios
+    depending on the arguments passed to CLI.
+
+    NOTE:
+     -  Application will exit with error level 1 if invalid Adafruit IO
+        or Arduino Cloud feeds are provided
+
+     -  Application will exit with error level 0 if either no arguments 
+        are entered via CLI, or if arguments '-V' or '--version' are used. 
+        No data will be uploaded will be sent in that case.
+
+    Args:
+        cliArgs:
+            CLI arguments used to start application
+    """
+    global EXIT_NOW
+    global LOGGER
+    global ENVIRO_HAT
+
+    cli = init_cli_parser()
+
+    # Show 'help' and exit if no args
+    cliArgs, unknown = cli.parse_known_args(cliArgs)
+    if (not cliArgs and len(sys.argv) == 1) or (len(sys.argv) == 2 and cliArgs.debug):
+        cli.print_help(sys.stdout)
+        sys.exit(0)
+
+    if cliArgs.version:
+        print(f"{APP_NAME} (v{APP_VERSION})")
+        sys.exit(0)
+
     # Init signals
     signal.signal(signal.SIGINT, exit_now)
     signal.signal(signal.SIGTERM, exit_now)
 
-    # Get app dir
-    appDir = Path(__file__).parent
-
-    # Initialize TOML parser and load 'settings.toml' file
-    try:
-        with open(appDir.joinpath("settings.toml"), mode="rb") as fp:
-            config = tomllib.load(fp)
-    except tomllib.TOMLDecodeError:
-        sys.exit("Invalid 'settings.toml' file")      
-
-    # Initialize logger and IO uploader
-    logger = f451Logger(config)
-    uploader = f451Uploader(config)
-
-    # Initialize device instance which includes all sensors
-    # an d LCD display on Enviro+
-    enviro = f451Enviro(config)
-    enviro.display_init()
-
-    # enviroData = init_data_set(1, enviro.widthLCD)
-    enviroData = EnviroData(1, 10)
-
-    try:
-        tempsFeed = uploader.aio_feed_info(config.get(const.KWD_FEED_TEMPS))
-        pressFeed = uploader.aio_feed_info(config.get(const.KWD_FEED_PRESS))
-        humidFeed = uploader.aio_feed_info(config.get(const.KWD_FEED_HUMID))
-
-    except RequestError as e:
-        logger.log_error(f"Application terminated due to REQUEST ERROR: {e}")
-        enviro.display_reset()
-        sys.exit(1)
-
     # Get core settings
-    ioDelay = config.get(const.KWD_DELAY, const.DEF_DELAY)
-    ioWait = config.get(const.KWD_WAIT, const.DEF_WAIT)
-    ioThrottle = config.get(const.KWD_THROTTLE, const.DEF_THROTTLE)
-
-    delayCounter = maxDelay = ioDelay       # Ensure that we upload first reading
+    ioDelay = CONFIG.get(const.KWD_DELAY, const.DEF_DELAY)
+    ioWait = CONFIG.get(const.KWD_WAIT, const.DEF_WAIT)
+    ioThrottle = CONFIG.get(const.KWD_THROTTLE, const.DEF_THROTTLE)
+    ioRounding = CONFIG.get(const.KWD_ROUNDING, const.DEF_ROUNDING)
+    ioUploadAndExit = cliArgs.cron
 
     # Initialize core data queues
-    tempCompFactor = config.get(const.KWD_TEMP_COMP, const.DEF_TEMP_COMP_FACTOR)
-    cpuTempsQMaxLen = config.get(const.KWD_MAX_LEN_CPU_TEMPS, const.MAX_LEN_CPU_TEMPS)
-    cpuTempsQ = deque([enviro.get_CPU_temp(False)] * cpuTempsQMaxLen, maxlen=cpuTempsQMaxLen)
+    tempCompFactor = CONFIG.get(const.KWD_TEMP_COMP, const.DEF_TEMP_COMP_FACTOR)
+    cpuTempsQMaxLen = CONFIG.get(const.KWD_MAX_LEN_CPU_TEMPS, const.MAX_LEN_CPU_TEMPS)
+    cpuTempsQ = deque([ENVIRO_HAT.get_CPU_temp(False)] * cpuTempsQMaxLen, maxlen=cpuTempsQMaxLen)
+
+    enviroData = EnviroData(1, ENVIRO_HAT.widthLCD)
 
     # Log core info
-    debug_config_info()
-    logger.log_info("-- START Data Logging --")
+    if cliArgs.debug:
+        LOGGER.set_log_level(const.LOG_DEBUG)
 
-    # # -- Main application loop --
+    debug_config_info()
+    LOGGER.log_info("-- START Data Logging --")
+
+    # Initialize display
+    if not cliArgs.noDisplay:
+        ENVIRO_HAT.display_init()
+
+    # -- Main application loop --
     displayUpdate = 0
     timeSinceUpdate = 0
     timeUpdate = time.time()
-    uploadDelay = ioDelay
+    uploadDelay = 0                         # Ensure that we upload first reading
     tempCounter = 0
+    numUploads = 0
 
     while not EXIT_NOW:
-        tempCounter += 1
-        EXIT_NOW = (tempCounter >= 1000)
-
         timeCurrent = time.time()
         timeSinceUpdate = timeCurrent - timeUpdate
 
+        EXIT_NOW = ((tempCounter >= 4) or ioUploadAndExit)
+
         # Get raw temp from sensor
-        tempRaw = enviro.get_temperature()
+        tempRaw = ENVIRO_HAT.get_temperature()
 
         # Get current CPU temp, add to queue, and calculate new average
         #
         # NOTE: This feature relies on the 'vcgencmd' which is found on
         #       RPIs. If this is not run on a RPI (e.g. during testing),
         #       then we need to neutralize the 'cpuTemp' compensation. 
-        cpuTempsQ.append(enviro.get_CPU_temp(False))
+        cpuTempsQ.append(ENVIRO_HAT.get_CPU_temp(False))
         cpuTempAvg = sum(cpuTempsQ) / float(cpuTempsQMaxLen)
 
         # Smooth out with some averaging to decrease jitter
         tempComp = tempRaw - ((cpuTempAvg - tempRaw) / tempCompFactor)
 
-        pressRaw = enviro.get_pressure()
-        humidRaw = enviro.get_humidity()
+        pressRaw = ENVIRO_HAT.get_pressure() * 100
+        humidRaw = ENVIRO_HAT.get_humidity()
 
-        pmData = enviro.get_particles()
+        pmData = ENVIRO_HAT.get_particles()
         pm25Raw = pmData.pm_ug_per_m3(2.5)      # TO DO: fix magic number
         pm10Raw = pmData.pm_ug_per_m3(10)       # TO DO: fix magic number
 
         # Is it time to upload data?
-        if timeSinceUpdate > 600:
+        if timeSinceUpdate >= uploadDelay:
             try:
                 asyncio.run(upload_sensor_data(
-                    temperature = tempComp, 
-                    pressure = pressRaw * 100, 
-                    humidity = humidRaw, 
-                    pm25 = pm25Raw,
-                    pm10 = pm10Raw, 
+                    temperature = round(tempComp, ioRounding), 
+                    pressure = round(pressRaw, ioRounding), 
+                    humidity = round(humidRaw, ioRounding), 
+                    pm25 = round(pm25Raw, ioRounding),
+                    pm10 = round(pm10Raw, ioRounding), 
                     deviceID = get_RPI_ID(const.DEF_ID_PREFIX)
                 ))
 
             except RequestError as e:
-                logger.log_error(f"Application terminated due to REQUEST ERROR: {e}")
+                LOGGER.log_error(f"Application terminated due to REQUEST ERROR: {e}")
                 raise
 
             except ThrottlingError as e:
@@ -292,94 +313,124 @@ if __name__ == '__main__':
                 uploadDelay += ioThrottle
                 
             else:
-                # Reset 'maxDelay' back to normal 'ioDelay' on successful upload
+                # Reset 'uploadDelay' back to normal 'ioDelay' on successful upload
                 uploadDelay = ioDelay
-                logger.log_info(f"Uploaded: TEMP: {tempComp} - PRESS: {pressRaw * 100} - HUMID: {humidRaw}")
+                numUploads += 1
+                LOGGER.log_info(f"Uploaded: TEMP: {round(tempComp, ioRounding)} - PRESS: {round(pressRaw, ioRounding)} - HUMID: {round(humidRaw, ioRounding)}")
 
             finally:
+                tempCounter += 1
                 timeUpdate = timeCurrent
 
         # If proximity crosses threshold, toggle the display mode
-        proximity = enviro.get_proximity()
+        proximity = ENVIRO_HAT.get_proximity()
 
         if proximity > PROX_LIMIT and (timeCurrent - displayUpdate) > PROX_DEBOUNCE:
-            enviro.displMode = (enviro.displMode + 1) % (const.MAX_DISPL + 1)
+            ENVIRO_HAT.displMode = (ENVIRO_HAT.displMode + 1) % (const.MAX_DISPL + 1)
             displayUpdate = timeCurrent
 
         # Check display mode. Each mode corresponds to a data type
-        if enviro.displMode == const.IDX_TEMP:          # type = "temperature"
+        if ENVIRO_HAT.displMode == const.IDX_TEMP:          # type = "temperature"
             enviroData.temperature.data.append(tempComp)
-            enviro.display_as_graph(enviroData.temperature.as_dict())
+            if not cliArgs.noDisplay:
+                ENVIRO_HAT.display_as_graph(enviroData.temperature.as_dict())
 
-        elif enviro.displMode == const.IDX_PRESS:       # type = "pressure"
+        elif ENVIRO_HAT.displMode == const.IDX_PRESS:       # type = "pressure"
             enviroData.pressure.data.append(pressRaw)
-            enviro.display_as_graph(enviroData.pressure.as_dict())
+            if not cliArgs.noDisplay:
+                ENVIRO_HAT.display_as_graph(enviroData.pressure.as_dict())
 
-        elif enviro.displMode == const.IDX_HUMID:       # type = "humidity"
+        elif ENVIRO_HAT.displMode == const.IDX_HUMID:       # type = "humidity"
             enviroData.humidity.data.append(humidRaw)
-            enviro.display_as_graph(enviroData.humidity.as_dict())
+            if not cliArgs.noDisplay:
+                ENVIRO_HAT.display_as_graph(enviroData.humidity.as_dict())
                 
-        elif enviro.displMode == const.IDX_LIGHT:       # type = "light"
-            data = enviro.get_lux() if (proximity < 10) else 1    # TO DO: fix magic number
+        elif ENVIRO_HAT.displMode == const.IDX_LIGHT:       # type = "light"
+            data = ENVIRO_HAT.get_lux() if (proximity < 10) else 1    # TO DO: fix magic number
             enviroData.light.data.append(data)
-            enviro.display_as_graph(enviroData.light.as_dict())
+            if not cliArgs.noDisplay:
+                ENVIRO_HAT.display_as_graph(enviroData.light.as_dict())
 
-        elif enviro.displMode == const.IDX_OXID:        # type = "oxidised"
-            data = enviro.get_gas_data()
+        elif ENVIRO_HAT.displMode == const.IDX_OXID:        # type = "oxidised"
+            data = ENVIRO_HAT.get_gas_data()
             enviroData.oxidised.data.append(data.oxidising / 1000)
-            enviro.display_as_graph(enviroData.oxidised.as_dict())
+            if not cliArgs.noDisplay:
+                ENVIRO_HAT.display_as_graph(enviroData.oxidised.as_dict())
                 
-        elif enviro.displMode == const.IDX_REDUC:       # type = "reduced"
-            data = enviro.get_gas_data()
+        elif ENVIRO_HAT.displMode == const.IDX_REDUC:       # type = "reduced"
+            data = ENVIRO_HAT.get_gas_data()
             enviroData.reduced.data.append(data.reducing / 1000)
-            enviro.display_as_graph(enviroData.reduced.as_dict())
+            if not cliArgs.noDisplay:
+                ENVIRO_HAT.display_as_graph(enviroData.reduced.as_dict())
 
-        elif enviro.displMode == const.IDX_NH3:         # type = "nh3"
-            data = enviro.get_gas_data()
+        elif ENVIRO_HAT.displMode == const.IDX_NH3:         # type = "nh3"
+            data = ENVIRO_HAT.get_gas_data()
             enviroData.nh3.data.append(data.nh3 / 1000)
-            enviro.display_as_graph(enviroData.nh3.as_dict())
+            if not cliArgs.noDisplay:
+                ENVIRO_HAT.display_as_graph(enviroData.nh3.as_dict())
 
-        elif enviro.displMode == const.IDX_PM1:         # type = "pm1"
+        elif ENVIRO_HAT.displMode == const.IDX_PM1:         # type = "pm1"
             enviroData.pm1.data.append(float(pmData.pm_ug_per_m3(1.0)))
-            enviro.display_as_graph(enviroData.pm1.as_dict())
+            if not cliArgs.noDisplay:
+                ENVIRO_HAT.display_as_graph(enviroData.pm1.as_dict())
 
-        elif enviro.displMode == const.IDX_PM25:        # type = "pm25"
+        elif ENVIRO_HAT.displMode == const.IDX_PM25:        # type = "pm25"
             enviroData.pm25.data.append(float(pm25Raw))
-            enviro.display_as_graph(enviroData.pm25.as_dict())
+            if not cliArgs.noDisplay:
+                ENVIRO_HAT.display_as_graph(enviroData.pm25.as_dict())
 
-        elif enviro.displMode == const.IDX_PM10:        # type = "pm10"
+        elif ENVIRO_HAT.displMode == const.IDX_PM10:        # type = "pm10"
             enviroData.pm10.data.append(float(pm10Raw))
-            enviro.display_as_graph(enviroData.pm10.as_dict())
+            if not cliArgs.noDisplay:
+                ENVIRO_HAT.display_as_graph(enviroData.pm10.as_dict())
 
         else:                                           # Display everything on one screen
             enviroData.temperature.data.append(tempComp)
             enviroData.pressure.data.append(pressRaw)
-            enviro.display_as_text(enviroData.as_list())
+            if not cliArgs.noDisplay:
+                ENVIRO_HAT.display_as_text(enviroData.as_list())
 
             enviroData.humidity.data.append(humidRaw)
-            data = enviro.get_lux() if (proximity < 10) else 1    # TODO: fix magic numbers
+            data = ENVIRO_HAT.get_lux() if (proximity < 10) else 1    # TODO: fix magic numbers
             enviroData.light.data.append(data)
-            enviro.display_as_text(enviroData.as_list())
+            if not cliArgs.noDisplay:
+                ENVIRO_HAT.display_as_text(enviroData.as_list())
 
-            data = enviro.get_gas_data()
+            data = ENVIRO_HAT.get_gas_data()
             enviroData.oxidised.data.append(data.oxidising / 1000)
             enviroData.reduced.data.append(data.reducing / 1000)
             enviroData.nh3.data.append(data.nh3 / 1000)
-            enviro.display_as_text(enviroData.as_list())
+            if not cliArgs.noDisplay:
+                ENVIRO_HAT.display_as_text(enviroData.as_list())
 
             enviroData.pm1.data.append(float(pmData.pm_ug_per_m3(1.0)))
             enviroData.pm25.data.append(float(pm25Raw))
             enviroData.pm10.data.append(float(pm10Raw))
-            enviro.display_as_text(enviroData.as_list())
+            if not cliArgs.noDisplay:
+                ENVIRO_HAT.display_as_text(enviroData.as_list())
+
+        # Let's rest a bit before we go through the loop again
+        if not ioUploadAndExit:
+            sys.stdout.write(f"Time to next update: {uploadDelay - int(timeSinceUpdate)} sec \r")
+            sys.stdout.flush()
+            time.sleep(ioWait)
 
     # A bit of clean-up before we exit
-    logger.log_info("-- END Data Logging --")
-    enviro.display_reset()
-    enviro.display_off()
-    # logger.debug(enviroData.as_list())
-    # logger.debug(list(enviroData.__dict__.keys()))
-    logger.debug(tempsFeed.key)
-    logger.debug(pressFeed.key)
-    logger.debug(humidFeed.key)
+    LOGGER.log_info("-- END Data Logging --")
+    if not cliArgs.noDisplay:
+        ENVIRO_HAT.display_reset()
+        ENVIRO_HAT.display_off()
+    # LOGGER.debug(cliArgs)
+    now = datetime.now()
+    print(f"{APP_NAME} [v{APP_VERSION}] - finished.\n")
+    print(f"Total uploads: {numUploads}")
+    print(f"Date:          {now:%a %b %-d, %Y}")
+    print(f"Time:          {now:%-I:%M:%S %p}")
+    print( "---- [ END ] ----\n")
 
-    print("Beep boop")
+
+# =========================================================
+#            G L O B A L   C A T C H - A L L
+# =========================================================
+if __name__ == "__main__":
+    main()  # pragma: no cover
