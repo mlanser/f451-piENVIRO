@@ -33,7 +33,9 @@ DEF_ROUNDING = 2            # Default 'rounding' precision for uploaded data
 
 DEF_ID_PREFIX = "raspi-"    # Default prefix for ID string
 
-DEF_TEMP_COMP_FACTOR = 1    # Default compensation factor for temperature
+# Tuning factor for compensation. Decrease this number to adjust the
+# temperature down, and increase to adjust up
+DEF_TEMP_COMP_FACTOR = 2.25
 
 LOG_NOTSET = 0
 LOG_DEBUG = 10

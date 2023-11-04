@@ -52,11 +52,11 @@ from Adafruit_IO import RequestError, ThrottlingError
 # =========================================================
 #          G L O B A L    V A R S   &   I N I T S
 # =========================================================
-APP_VERSION = "0.0.1"
+APP_VERSION = "0.0.2"
 APP_NAME = "f451 piENVIRO - Enviromon"
-APP_DIR = Path(__file__).parent
 
 # Initialize TOML parser and load 'settings.toml' file
+APP_DIR = Path(__file__).parent
 try:
     with open(APP_DIR.joinpath("settings.toml"), mode="rb") as fp:
         CONFIG = tomllib.load(fp)
@@ -84,7 +84,7 @@ except RequestError as e:
 # =========================================================
 #              H E L P E R   F U N C T I O N S
 # =========================================================
-def debug_config_info():
+def debug_config_info(cliArgs):
     """Print/log some basic debug info."""
 
     LOGGER.log_debug("-- Config Settings --")
@@ -100,6 +100,10 @@ def debug_config_info():
     # Display Raspberry Pi serial and Wi-Fi status
     LOGGER.log_debug(f"Raspberry Pi serial: {get_RPI_serial_num()}")
     LOGGER.log_debug(f"Wi-Fi: {(const.STATUS_YES if check_wifi() else const.STATUS_UNKNOWN)}")
+
+    # Display CLI args
+    LOGGER.log_debug(f"CLI Args:\n{cliArgs}")
+    LOGGER.log_debug("-- // --\n")
 
 
 def init_cli_parser():
@@ -250,7 +254,7 @@ def main(cliArgs=None):
     if cliArgs.debug:
         LOGGER.set_log_level(const.LOG_DEBUG)
 
-    debug_config_info()
+    debug_config_info(cliArgs)
     LOGGER.log_info("-- START Data Logging --")
 
     # Initialize display
@@ -269,7 +273,7 @@ def main(cliArgs=None):
         timeCurrent = time.time()
         timeSinceUpdate = timeCurrent - timeUpdate
 
-        EXIT_NOW = ((tempCounter >= 4) or ioUploadAndExit)
+        EXIT_NOW = ((tempCounter >= 10) or ioUploadAndExit)
 
         # Get raw temp from sensor
         tempRaw = ENVIRO_HAT.get_temperature()
@@ -410,7 +414,7 @@ def main(cliArgs=None):
                 ENVIRO_HAT.display_as_text(enviroData.as_list())
 
         # Let's rest a bit before we go through the loop again
-        if not ioUploadAndExit:
+        if cliArgs.debug and not ioUploadAndExit:
             sys.stdout.write(f"Time to next update: {uploadDelay - int(timeSinceUpdate)} sec \r")
             sys.stdout.flush()
             time.sleep(ioWait)
@@ -420,12 +424,12 @@ def main(cliArgs=None):
     if not cliArgs.noDisplay:
         ENVIRO_HAT.display_reset()
         ENVIRO_HAT.display_off()
-    # LOGGER.debug(cliArgs)
+    
     now = datetime.now()
     print(f"{APP_NAME} [v{APP_VERSION}] - finished.\n")
-    print(f"Total uploads: {numUploads}")
-    print(f"Date:          {now:%a %b %-d, %Y}")
-    print(f"Time:          {now:%-I:%M:%S %p}")
+    print(f"Num uploads: {numUploads}")
+    print(f"Date:        {now:%a %b %-d, %Y}")
+    print(f"Time:        {now:%-I:%M:%S %p}")
     print( "---- [ END ] ----\n")
 
 
