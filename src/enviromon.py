@@ -269,15 +269,13 @@ def main(cliArgs=None):
     displayUpdate = 0
     timeSinceUpdate = 0
     timeUpdate = time.time()
-    uploadDelay = 60                        # Ensure that we upload first reading
+    uploadDelay = ioDelay       # Ensure that we do NOT upload first reading
     tempCounter = 0
     numUploads = 0
 
     while not EXIT_NOW:
         timeCurrent = time.time()
         timeSinceUpdate = timeCurrent - timeUpdate
-
-        EXIT_NOW = ((tempCounter >= 10) or ioUploadAndExit)
 
         # Get raw temp from sensor
         tempRaw = ENVIRO_HAT.get_temperature()
@@ -323,13 +321,15 @@ def main(cliArgs=None):
                 
             else:
                 # Reset 'uploadDelay' back to normal 'ioDelay' on successful upload
-                uploadDelay = ioDelay
                 numUploads += 1
+                uploadDelay = ioDelay
+                EXIT_NOW = (EXIT_NOW or ioUploadAndExit)
                 LOGGER.log_info(f"Uploaded: TEMP: {round(tempComp, ioRounding)} - PRESS: {round(pressRaw, ioRounding)} - HUMID: {round(humidRaw, ioRounding)}")
 
             finally:
-                tempCounter += 1
                 timeUpdate = timeCurrent
+                tempCounter += 1
+                EXIT_NOW = (tempCounter >= 4)
 
         # If proximity crosses threshold, toggle the display mode
         proximity = ENVIRO_HAT.get_proximity()
