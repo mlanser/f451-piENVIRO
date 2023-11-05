@@ -26,7 +26,6 @@ import argparse
 import time
 import sys
 import asyncio
-import signal
 
 # from random import randint
 from pathlib import Path
@@ -34,7 +33,7 @@ from datetime import datetime
 from collections import deque
 
 import constants as const
-from common import load_settings, get_RPI_serial_num, get_RPI_ID, exit_now, check_wifi, EXIT_NOW
+from common import load_settings, get_RPI_serial_num, get_RPI_ID, check_wifi
 from enviro_data import EnviroData
 
 from f451_logger.logger import Logger as f451Logger, KWD_LOG_LEVEL
@@ -223,7 +222,6 @@ def main(cliArgs=None):
         cliArgs:
             CLI arguments used to start application
     """
-    global EXIT_NOW
     global LOGGER
     global ENVIRO_HAT
 
@@ -240,8 +238,8 @@ def main(cliArgs=None):
         sys.exit(0)
 
     # Init signals
-    signal.signal(signal.SIGINT, exit_now)
-    signal.signal(signal.SIGTERM, exit_now)
+    # signal.signal(signal.SIGINT, exit_now)
+    # signal.signal(signal.SIGTERM, exit_now)
 
     # Get core settings
     ioFreq = CONFIG.get(const.KWD_FREQ, const.DEF_FREQ)
@@ -280,156 +278,161 @@ def main(cliArgs=None):
     uploadDelay = ioDelay       # Ensure that we do NOT upload first reading
     maxUploads = int(cliArgs.uploads)
     numUploads = 0
+    exitNow = False
 
-    while not EXIT_NOW:
-        timeCurrent = time.time()
-        timeSinceUpdate = timeCurrent - timeUpdate
+    try:
+        while not exitNow:
+            timeCurrent = time.time()
+            timeSinceUpdate = timeCurrent - timeUpdate
 
-        # Get raw temp from sensor
-        tempRaw = ENVIRO_HAT.get_temperature()
+            # Get raw temp from sensor
+            tempRaw = ENVIRO_HAT.get_temperature()
 
-        # Get current CPU temp, add to queue, and calculate new average
-        #
-        # NOTE: This feature relies on the 'vcgencmd' which is found on
-        #       RPIs. If this is not run on a RPI (e.g. during testing),
-        #       then we need to neutralize the 'cpuTemp' compensation. 
-        cpuTempsQ.append(ENVIRO_HAT.get_CPU_temp(False))
-        cpuTempAvg = sum(cpuTempsQ) / float(cpuTempsQMaxLen)
+            # Get current CPU temp, add to queue, and calculate new average
+            #
+            # NOTE: This feature relies on the 'vcgencmd' which is found on
+            #       RPIs. If this is not run on a RPI (e.g. during testing),
+            #       then we need to neutralize the 'cpuTemp' compensation. 
+            cpuTempsQ.append(ENVIRO_HAT.get_CPU_temp(False))
+            cpuTempAvg = sum(cpuTempsQ) / float(cpuTempsQMaxLen)
 
-        # Smooth out with some averaging to decrease jitter
-        tempComp = tempRaw - ((cpuTempAvg - tempRaw) / tempCompFactor)
-        LOGGER.log_debug(f"TempComp: {round(tempComp, 1)} - AvgTempCPU: {round(cpuTempAvg, 1)} - TempRaw: {round(tempRaw, 1)}")
+            # Smooth out with some averaging to decrease jitter
+            tempComp = tempRaw - ((cpuTempAvg - tempRaw) / tempCompFactor)
+            LOGGER.log_debug(f"TempComp: {round(tempComp, 1)} - AvgTempCPU: {round(cpuTempAvg, 1)} - TempRaw: {round(tempRaw, 1)}")
 
-        pressRaw = ENVIRO_HAT.get_pressure()
-        humidRaw = ENVIRO_HAT.get_humidity()
+            pressRaw = ENVIRO_HAT.get_pressure()
+            humidRaw = ENVIRO_HAT.get_humidity()
 
-        pmData = ENVIRO_HAT.get_particles()
-        pm25Raw = pmData.pm_ug_per_m3(2.5)      # TO DO: fix magic number
-        pm10Raw = pmData.pm_ug_per_m3(10)       # TO DO: fix magic number
+            pmData = ENVIRO_HAT.get_particles()
+            pm25Raw = pmData.pm_ug_per_m3(2.5)      # TO DO: fix magic number
+            pm10Raw = pmData.pm_ug_per_m3(10)       # TO DO: fix magic number
 
-        # Is it time to upload data?
-        if timeSinceUpdate >= uploadDelay:
-            try:
-                asyncio.run(upload_sensor_data(
-                    temperature = round(tempComp, ioRounding), 
-                    pressure = round(pressRaw, ioRounding), 
-                    humidity = round(humidRaw, ioRounding), 
-                    pm25 = round(pm25Raw, ioRounding),
-                    pm10 = round(pm10Raw, ioRounding), 
-                    deviceID = get_RPI_ID(const.DEF_ID_PREFIX)
-                ))
+            # Is it time to upload data?
+            if timeSinceUpdate >= uploadDelay:
+                try:
+                    asyncio.run(upload_sensor_data(
+                        temperature = round(tempComp, ioRounding), 
+                        pressure = round(pressRaw, ioRounding), 
+                        humidity = round(humidRaw, ioRounding), 
+                        pm25 = round(pm25Raw, ioRounding),
+                        pm10 = round(pm10Raw, ioRounding), 
+                        deviceID = get_RPI_ID(const.DEF_ID_PREFIX)
+                    ))
 
-            except RequestError as e:
-                LOGGER.log_error(f"Application terminated due to REQUEST ERROR: {e}")
-                raise
+                except RequestError as e:
+                    LOGGER.log_error(f"Application terminated due to REQUEST ERROR: {e}")
+                    raise
 
-            except ThrottlingError as e:
-                # Keep increasing 'ioDelay' each time we get a 'ThrottlingError'
-                uploadDelay += ioThrottle
-                
-            else:
-                # Reset 'uploadDelay' back to normal 'ioFreq' on successful upload
-                numUploads += 1
-                uploadDelay = ioFreq
-                EXIT_NOW = (EXIT_NOW or ioUploadAndExit)
-                LOGGER.log_info(f"Uploaded: TEMP: {round(tempComp, ioRounding)} - PRESS: {round(pressRaw, ioRounding)} - HUMID: {round(humidRaw, ioRounding)}")
+                except ThrottlingError as e:
+                    # Keep increasing 'ioDelay' each time we get a 'ThrottlingError'
+                    uploadDelay += ioThrottle
+                    
+                else:
+                    # Reset 'uploadDelay' back to normal 'ioFreq' on successful upload
+                    numUploads += 1
+                    uploadDelay = ioFreq
+                    exitNow = (exitNow or ioUploadAndExit)
+                    LOGGER.log_info(f"Uploaded: TEMP: {round(tempComp, ioRounding)} - PRESS: {round(pressRaw, ioRounding)} - HUMID: {round(humidRaw, ioRounding)}")
 
-            finally:
-                timeUpdate = timeCurrent
-                EXIT_NOW = ((maxUploads > 0) and (numUploads >= maxUploads))
+                finally:
+                    timeUpdate = timeCurrent
+                    exitNow = ((maxUploads > 0) and (numUploads >= maxUploads))
 
-        # If proximity crosses threshold, toggle the display mode
-        proximity = ENVIRO_HAT.get_proximity()
+            # If proximity crosses threshold, toggle the display mode
+            proximity = ENVIRO_HAT.get_proximity()
 
-        if proximity > PROX_LIMIT and (timeCurrent - displayUpdate) > PROX_DEBOUNCE:
-            ENVIRO_HAT.displMode = (ENVIRO_HAT.displMode + 1) % (const.MAX_DISPL + 1)
-            displayUpdate = timeCurrent
+            if proximity > PROX_LIMIT and (timeCurrent - displayUpdate) > PROX_DEBOUNCE:
+                ENVIRO_HAT.displMode = (ENVIRO_HAT.displMode + 1) % (const.MAX_DISPL + 1)
+                displayUpdate = timeCurrent
 
-        # Check display mode. Each mode corresponds to a data type
-        if ENVIRO_HAT.displMode == const.IDX_TEMP:          # type = "temperature"
-            enviroData.temperature.data.append(tempComp)
-            if not cliArgs.noDisplay:
-                ENVIRO_HAT.display_as_graph(enviroData.temperature.as_dict())
+            # Check display mode. Each mode corresponds to a data type
+            if ENVIRO_HAT.displMode == const.IDX_TEMP:          # type = "temperature"
+                enviroData.temperature.data.append(tempComp)
+                if not cliArgs.noDisplay:
+                    ENVIRO_HAT.display_as_graph(enviroData.temperature.as_dict())
 
-        elif ENVIRO_HAT.displMode == const.IDX_PRESS:       # type = "pressure"
-            enviroData.pressure.data.append(pressRaw)
-            if not cliArgs.noDisplay:
-                ENVIRO_HAT.display_as_graph(enviroData.pressure.as_dict())
+            elif ENVIRO_HAT.displMode == const.IDX_PRESS:       # type = "pressure"
+                enviroData.pressure.data.append(pressRaw)
+                if not cliArgs.noDisplay:
+                    ENVIRO_HAT.display_as_graph(enviroData.pressure.as_dict())
 
-        elif ENVIRO_HAT.displMode == const.IDX_HUMID:       # type = "humidity"
-            enviroData.humidity.data.append(humidRaw)
-            if not cliArgs.noDisplay:
-                ENVIRO_HAT.display_as_graph(enviroData.humidity.as_dict())
-                
-        elif ENVIRO_HAT.displMode == const.IDX_LIGHT:       # type = "light"
-            data = ENVIRO_HAT.get_lux() if (proximity < 10) else 1    # TO DO: fix magic number
-            enviroData.light.data.append(data)
-            if not cliArgs.noDisplay:
-                ENVIRO_HAT.display_as_graph(enviroData.light.as_dict())
+            elif ENVIRO_HAT.displMode == const.IDX_HUMID:       # type = "humidity"
+                enviroData.humidity.data.append(humidRaw)
+                if not cliArgs.noDisplay:
+                    ENVIRO_HAT.display_as_graph(enviroData.humidity.as_dict())
+                    
+            elif ENVIRO_HAT.displMode == const.IDX_LIGHT:       # type = "light"
+                data = ENVIRO_HAT.get_lux() if (proximity < 10) else 1    # TO DO: fix magic number
+                enviroData.light.data.append(data)
+                if not cliArgs.noDisplay:
+                    ENVIRO_HAT.display_as_graph(enviroData.light.as_dict())
 
-        elif ENVIRO_HAT.displMode == const.IDX_OXID:        # type = "oxidised"
-            data = ENVIRO_HAT.get_gas_data()
-            enviroData.oxidised.data.append(data.oxidising / 1000)
-            if not cliArgs.noDisplay:
-                ENVIRO_HAT.display_as_graph(enviroData.oxidised.as_dict())
-                
-        elif ENVIRO_HAT.displMode == const.IDX_REDUC:       # type = "reduced"
-            data = ENVIRO_HAT.get_gas_data()
-            enviroData.reduced.data.append(data.reducing / 1000)
-            if not cliArgs.noDisplay:
-                ENVIRO_HAT.display_as_graph(enviroData.reduced.as_dict())
+            elif ENVIRO_HAT.displMode == const.IDX_OXID:        # type = "oxidised"
+                data = ENVIRO_HAT.get_gas_data()
+                enviroData.oxidised.data.append(data.oxidising / 1000)
+                if not cliArgs.noDisplay:
+                    ENVIRO_HAT.display_as_graph(enviroData.oxidised.as_dict())
+                    
+            elif ENVIRO_HAT.displMode == const.IDX_REDUC:       # type = "reduced"
+                data = ENVIRO_HAT.get_gas_data()
+                enviroData.reduced.data.append(data.reducing / 1000)
+                if not cliArgs.noDisplay:
+                    ENVIRO_HAT.display_as_graph(enviroData.reduced.as_dict())
 
-        elif ENVIRO_HAT.displMode == const.IDX_NH3:         # type = "nh3"
-            data = ENVIRO_HAT.get_gas_data()
-            enviroData.nh3.data.append(data.nh3 / 1000)
-            if not cliArgs.noDisplay:
-                ENVIRO_HAT.display_as_graph(enviroData.nh3.as_dict())
+            elif ENVIRO_HAT.displMode == const.IDX_NH3:         # type = "nh3"
+                data = ENVIRO_HAT.get_gas_data()
+                enviroData.nh3.data.append(data.nh3 / 1000)
+                if not cliArgs.noDisplay:
+                    ENVIRO_HAT.display_as_graph(enviroData.nh3.as_dict())
 
-        elif ENVIRO_HAT.displMode == const.IDX_PM1:         # type = "pm1"
-            enviroData.pm1.data.append(float(pmData.pm_ug_per_m3(1.0)))
-            if not cliArgs.noDisplay:
-                ENVIRO_HAT.display_as_graph(enviroData.pm1.as_dict())
+            elif ENVIRO_HAT.displMode == const.IDX_PM1:         # type = "pm1"
+                enviroData.pm1.data.append(float(pmData.pm_ug_per_m3(1.0)))
+                if not cliArgs.noDisplay:
+                    ENVIRO_HAT.display_as_graph(enviroData.pm1.as_dict())
 
-        elif ENVIRO_HAT.displMode == const.IDX_PM25:        # type = "pm25"
-            enviroData.pm25.data.append(float(pm25Raw))
-            if not cliArgs.noDisplay:
-                ENVIRO_HAT.display_as_graph(enviroData.pm25.as_dict())
+            elif ENVIRO_HAT.displMode == const.IDX_PM25:        # type = "pm25"
+                enviroData.pm25.data.append(float(pm25Raw))
+                if not cliArgs.noDisplay:
+                    ENVIRO_HAT.display_as_graph(enviroData.pm25.as_dict())
 
-        elif ENVIRO_HAT.displMode == const.IDX_PM10:        # type = "pm10"
-            enviroData.pm10.data.append(float(pm10Raw))
-            if not cliArgs.noDisplay:
-                ENVIRO_HAT.display_as_graph(enviroData.pm10.as_dict())
+            elif ENVIRO_HAT.displMode == const.IDX_PM10:        # type = "pm10"
+                enviroData.pm10.data.append(float(pm10Raw))
+                if not cliArgs.noDisplay:
+                    ENVIRO_HAT.display_as_graph(enviroData.pm10.as_dict())
 
-        else:                                           # Display everything on one screen
-            enviroData.temperature.data.append(tempComp)
-            enviroData.pressure.data.append(pressRaw)
-            if not cliArgs.noDisplay:
-                ENVIRO_HAT.display_as_text(enviroData.as_list())
+            else:                                           # Display everything on one screen
+                enviroData.temperature.data.append(tempComp)
+                enviroData.pressure.data.append(pressRaw)
+                if not cliArgs.noDisplay:
+                    ENVIRO_HAT.display_as_text(enviroData.as_list())
 
-            enviroData.humidity.data.append(humidRaw)
-            data = ENVIRO_HAT.get_lux() if (proximity < 10) else 1    # TODO: fix magic numbers
-            enviroData.light.data.append(data)
-            if not cliArgs.noDisplay:
-                ENVIRO_HAT.display_as_text(enviroData.as_list())
+                enviroData.humidity.data.append(humidRaw)
+                data = ENVIRO_HAT.get_lux() if (proximity < 10) else 1    # TODO: fix magic numbers
+                enviroData.light.data.append(data)
+                if not cliArgs.noDisplay:
+                    ENVIRO_HAT.display_as_text(enviroData.as_list())
 
-            data = ENVIRO_HAT.get_gas_data()
-            enviroData.oxidised.data.append(data.oxidising / 1000)
-            enviroData.reduced.data.append(data.reducing / 1000)
-            enviroData.nh3.data.append(data.nh3 / 1000)
-            if not cliArgs.noDisplay:
-                ENVIRO_HAT.display_as_text(enviroData.as_list())
+                data = ENVIRO_HAT.get_gas_data()
+                enviroData.oxidised.data.append(data.oxidising / 1000)
+                enviroData.reduced.data.append(data.reducing / 1000)
+                enviroData.nh3.data.append(data.nh3 / 1000)
+                if not cliArgs.noDisplay:
+                    ENVIRO_HAT.display_as_text(enviroData.as_list())
 
-            enviroData.pm1.data.append(float(pmData.pm_ug_per_m3(1.0)))
-            enviroData.pm25.data.append(float(pm25Raw))
-            enviroData.pm10.data.append(float(pm10Raw))
-            if not cliArgs.noDisplay:
-                ENVIRO_HAT.display_as_text(enviroData.as_list())
+                enviroData.pm1.data.append(float(pmData.pm_ug_per_m3(1.0)))
+                enviroData.pm25.data.append(float(pm25Raw))
+                enviroData.pm10.data.append(float(pm10Raw))
+                if not cliArgs.noDisplay:
+                    ENVIRO_HAT.display_as_text(enviroData.as_list())
 
-        # Let's rest a bit before we go through the loop again
-        if cliArgs.debug and not ioUploadAndExit:
-            sys.stdout.write(f"Time to next update: {uploadDelay - int(timeSinceUpdate)} sec \r")
-            sys.stdout.flush()
-            time.sleep(ioWait)
+            # Let's rest a bit before we go through the loop again
+            if cliArgs.debug and not ioUploadAndExit:
+                sys.stdout.write(f"Time to next update: {uploadDelay - int(timeSinceUpdate)} sec \r")
+                sys.stdout.flush()
+                time.sleep(ioWait)
+
+    except KeyboardInterrupt:
+        exitNow = True
 
     # A bit of clean-up before we exit
     LOGGER.log_info("-- END Data Logging --")
@@ -438,7 +441,7 @@ def main(cliArgs=None):
         ENVIRO_HAT.display_off()
     
     now = datetime.now()
-    print(f"{APP_NAME} [v{APP_VERSION}] - finished.\n")
+    print(f"\n{APP_NAME} [v{APP_VERSION}] - finished.\n")
     print(f"Num uploads: {numUploads}")
     print(f"Date:        {now:%a %b %-d, %Y}")
     print(f"Time:        {now:%-I:%M:%S %p}")
