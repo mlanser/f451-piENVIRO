@@ -46,7 +46,7 @@ from Adafruit_IO import RequestError, ThrottlingError
 # =========================================================
 #          G L O B A L    V A R S   &   I N I T S
 # =========================================================
-APP_VERSION = "0.0.2"
+APP_VERSION = "0.1.0"
 APP_NAME = "f451 piENVIRO - Enviromon"
 APP_LOG = "f451-pienviro-enviromon.log" # Individual logs for devices with multiple apps
 APP_SETTINGS = "settings.toml"          # Standard for all f451 Labs projects
@@ -237,9 +237,9 @@ def main(cliArgs=None):
         print(f"{APP_NAME} (v{APP_VERSION})")
         sys.exit(0)
 
-    # Init signals
-    # signal.signal(signal.SIGINT, exit_now)
-    # signal.signal(signal.SIGTERM, exit_now)
+    # Initialize LCD display
+    if not cliArgs.noDisplay:
+        ENVIRO_HAT.display_init()
 
     # Get core settings
     ioFreq = CONFIG.get(const.KWD_FREQ, const.DEF_FREQ)
@@ -256,20 +256,12 @@ def main(cliArgs=None):
 
     enviroData = EnviroData(1, ENVIRO_HAT.widthLCD)
 
-    # Update log file?
+    # Update log file or level?
     if cliArgs.log is not None:
         LOGGER.set_log_file(CONFIG.get(KWD_LOG_LEVEL, const.LOG_NOTSET), cliArgs.log)
 
-    # Log core info
     if cliArgs.debug:
         LOGGER.set_log_level(const.LOG_DEBUG)
-
-    debug_config_info(cliArgs)
-    LOGGER.log_info("-- START Data Logging --")
-
-    # Initialize display
-    if not cliArgs.noDisplay:
-        ENVIRO_HAT.display_init()
 
     # -- Main application loop --
     displayUpdate = 0
@@ -279,6 +271,9 @@ def main(cliArgs=None):
     maxUploads = int(cliArgs.uploads)
     numUploads = 0
     exitNow = False
+
+    debug_config_info(cliArgs)
+    LOGGER.log_info("-- START Data Logging --")
 
     try:
         while not exitNow:

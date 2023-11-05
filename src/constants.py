@@ -78,7 +78,7 @@ KWD_DATA_HUMID = "humidity"
 #    C O N S T A N T S   F O R   E N V I R O N   D A T A
 # =========================================================
 # Min/max display modes.
-IDX_ALL   = 0       # Display all data
+IDX_ALL   = 0           # Display all data
 IDX_TEMP  = 1
 IDX_PRESS = 2
 IDX_HUMID = 3

@@ -17,22 +17,6 @@ except ModuleNotFoundError:
 # =========================================================
 #          G L O B A L S   A N D   H E L P E R S
 # =========================================================
-EXIT_NOW = False    # Global flag for immediate (graceful) exit
-
-def exit_now(self, *args):
-    """Changes global 'EXIT_NOW' flag.
-    
-    This function is called/triggered by signals (e.g. SIGINT, SIGTERM, etc.)
-    and allows us run some clean-up tasks before shutting down.
-    
-    NOTE: It's not possible to catch SIGKILL
-    
-    Based on code from: https://stackoverflow.com/questions/18499497/how-to-process-sigterm-signal-gracefully/31464349#31464349
-    """
-    global EXIT_NOW
-    EXIT_NOW = True
-
-
 def load_settings(settingsFile):
     """Initialize TOML parser and load settings file
 
@@ -71,9 +55,21 @@ def get_RPI_serial_num():
 
 
 def get_RPI_ID(prefix="", suffix="", default="n/a"):
+    """Get Raspberry Pi ID
+
+    Returns a string with RPI ID (i.e. serial num with pre- and suffix).
+
+    Args:
+        prefix: optional prefix
+        suffix: optional suffix
+        default: optional default string to be returned if no serial num
+    
+    Returns:
+        'str' with RPI ID
+    """
     serialNum = get_RPI_serial_num()
-    if serialNum:
-        return prefix + serialNum + suffix
+    
+    return f"{prefix}{serialNum}{suffix}" if serialNum else default
 
 
 def check_wifi():
