@@ -26,7 +26,9 @@ ROTATE_90 = 90              # Rotate 90 degrees
 
 MAX_LEN_CPU_TEMPS = 5       # Max number of CPU temps
 
-DEF_DELAY = 59              # Default delay between uploads
+DEF_UPLOADS = -1            # Number of uploads. If -1, then no limit.
+DEF_FREQ = 600              # Default delay between uploads in seconds
+DEF_DELAY = 300             # Default delay before first upload in seconds
 DEF_WAIT = 1                # Default delay between sensor reads
 DEF_THROTTLE = 120          # Default additional delay on 'ThrottlingError'
 DEF_ROUNDING = 2            # Default 'rounding' precision for uploaded data
@@ -55,10 +57,12 @@ STATUS_UNKNOWN = "unknown"
 KWD_TEMP_COMP = "TEMP_COMP"
 KWD_MAX_LEN_CPU_TEMPS = "CPU_TEMPS"
 
+KWD_FREQ = "FREQ"
 KWD_DELAY = "DELAY"
 KWD_WAIT = "WAIT"
 KWD_THROTTLE = "THROTTLE"
 KWD_ROUNDING = "ROUNDING"
+KWD_UPLOADS = "UPLOADS"
 KWD_FEED_TEMPS = "FEED_TEMPS"
 KWD_FEED_PRESS = "FEED_PRESS"
 KWD_FEED_HUMID = "FEED_HUMID"

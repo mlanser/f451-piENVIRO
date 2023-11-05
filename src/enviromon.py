@@ -143,6 +143,13 @@ def init_cli_parser():
         type=str,
         help="name of log file",
     )
+    parser.add_argument(
+        "--uploads",
+        action="store",
+        type=int,
+        default=-1,
+        help="number of uploads before exiting",
+    )
 
     return parser
 
@@ -237,6 +244,7 @@ def main(cliArgs=None):
     signal.signal(signal.SIGTERM, exit_now)
 
     # Get core settings
+    ioFreq = CONFIG.get(const.KWD_FREQ, const.DEF_FREQ)
     ioDelay = CONFIG.get(const.KWD_DELAY, const.DEF_DELAY)
     ioWait = CONFIG.get(const.KWD_WAIT, const.DEF_WAIT)
     ioThrottle = CONFIG.get(const.KWD_THROTTLE, const.DEF_THROTTLE)
@@ -270,7 +278,7 @@ def main(cliArgs=None):
     timeSinceUpdate = 0
     timeUpdate = time.time()
     uploadDelay = ioDelay       # Ensure that we do NOT upload first reading
-    tempCounter = 0
+    maxUploads = int(cliArgs.uploads)
     numUploads = 0
 
     while not EXIT_NOW:
@@ -290,9 +298,9 @@ def main(cliArgs=None):
 
         # Smooth out with some averaging to decrease jitter
         tempComp = tempRaw - ((cpuTempAvg - tempRaw) / tempCompFactor)
-        LOGGER.log_debug(f"TempComp: {tempComp} - AvgTempCPU: {cpuTempAvg} - TempRaw: {tempRaw}")
+        LOGGER.log_debug(f"TempComp: {round(tempComp, 1)} - AvgTempCPU: {round(cpuTempAvg, 1)} - TempRaw: {round(tempRaw, 1)}")
 
-        pressRaw = ENVIRO_HAT.get_pressure() * 100
+        pressRaw = ENVIRO_HAT.get_pressure()
         humidRaw = ENVIRO_HAT.get_humidity()
 
         pmData = ENVIRO_HAT.get_particles()
@@ -320,16 +328,15 @@ def main(cliArgs=None):
                 uploadDelay += ioThrottle
                 
             else:
-                # Reset 'uploadDelay' back to normal 'ioDelay' on successful upload
+                # Reset 'uploadDelay' back to normal 'ioFreq' on successful upload
                 numUploads += 1
-                uploadDelay = ioDelay
+                uploadDelay = ioFreq
                 EXIT_NOW = (EXIT_NOW or ioUploadAndExit)
                 LOGGER.log_info(f"Uploaded: TEMP: {round(tempComp, ioRounding)} - PRESS: {round(pressRaw, ioRounding)} - HUMID: {round(humidRaw, ioRounding)}")
 
             finally:
                 timeUpdate = timeCurrent
-                tempCounter += 1
-                EXIT_NOW = (tempCounter >= 4)
+                EXIT_NOW = ((maxUploads > 0) and (numUploads >= maxUploads))
 
         # If proximity crosses threshold, toggle the display mode
         proximity = ENVIRO_HAT.get_proximity()
@@ -435,7 +442,7 @@ def main(cliArgs=None):
     print(f"Num uploads: {numUploads}")
     print(f"Date:        {now:%a %b %-d, %Y}")
     print(f"Time:        {now:%-I:%M:%S %p}")
-    print( "---- [ END ] ----\n")
+    print("---- [ END ] ----\n")
 
 
 # =========================================================
