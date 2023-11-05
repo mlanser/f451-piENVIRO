@@ -8,6 +8,11 @@ import sys
 from subprocess import check_output, STDOUT, DEVNULL
 import constants as const
 
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
+
 
 # =========================================================
 #          G L O B A L S   A N D   H E L P E R S
@@ -28,23 +33,24 @@ def exit_now(self, *args):
     EXIT_NOW = True
 
 
-def check_wifi():
-    """Check for Wi-Fi connection on Raspberry Pi
+def load_settings(settingsFile):
+    """Initialize TOML parser and load settings file
 
-    Based on code from Enviro+ example 'luftdaten_combined.py'
-
-    TODO: verify better way to do this
+    Args:
+        settingsFile: path object or string with filename
 
     Returns:
-        'True' - wi-fi confirmed
-        'False' - status unknown
+        'dict' with values from TOML file 
     """
     try:
-        result = check_output(['hostname', '-I'], stdout=DEVNULL, stderr=STDOUT)
-    except:
-        result = None
+        with open(settingsFile, mode="rb") as fp:
+            settings = tomllib.load(fp)
 
-    return True if result is not None else False
+    except tomllib.TOMLDecodeError:
+        sys.exit(f"Invalid file: '{settingsFile}'")      
+
+    else:
+        return settings
 
 
 def get_RPI_serial_num():
@@ -68,6 +74,25 @@ def get_RPI_ID(prefix="", suffix="", default="n/a"):
     serialNum = get_RPI_serial_num()
     if serialNum:
         return prefix + serialNum + suffix
+
+
+def check_wifi():
+    """Check for Wi-Fi connection on Raspberry Pi
+
+    Based on code from Enviro+ example 'luftdaten_combined.py'
+
+    TODO: verify better way to do this
+
+    Returns:
+        'True' - wi-fi confirmed
+        'False' - status unknown
+    """
+    try:
+        result = check_output(['hostname', '-I'], stdout=DEVNULL, stderr=STDOUT)
+    except:
+        result = None
+
+    return True if result is not None else False
 
 
 def num_to_range(num, inMin, inMax, outMin, outMax):

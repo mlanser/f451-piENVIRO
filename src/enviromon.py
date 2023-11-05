@@ -34,13 +34,8 @@ from datetime import datetime
 from collections import deque
 
 import constants as const
-from common import get_RPI_serial_num, get_RPI_ID, exit_now, check_wifi, EXIT_NOW
+from common import load_settings, get_RPI_serial_num, get_RPI_ID, exit_now, check_wifi, EXIT_NOW
 from enviro_data import EnviroData
-
-try:
-    import tomllib
-except ModuleNotFoundError:
-    import tomli as tomllib
 
 from f451_logger.logger import Logger as f451Logger, KWD_LOG_LEVEL
 from f451_uploader.uploader import Uploader as f451Uploader
@@ -54,21 +49,19 @@ from Adafruit_IO import RequestError, ThrottlingError
 # =========================================================
 APP_VERSION = "0.0.2"
 APP_NAME = "f451 piENVIRO - Enviromon"
+APP_LOG = "f451-pienviro-enviromon.log" # Individual logs for devices with multiple apps
+APP_SETTINGS = "settings.toml"          # Standard for all f451 Labs projects
+APP_DIR = Path(__file__).parent         # Find dir for this app
 
-# Initialize TOML parser and load 'settings.toml' file
-APP_DIR = Path(__file__).parent
-try:
-    with open(APP_DIR.joinpath("settings.toml"), mode="rb") as fp:
-        CONFIG = tomllib.load(fp)
-except tomllib.TOMLDecodeError:
-    sys.exit("Invalid 'settings.toml' file")      
+# Load settings
+CONFIG = load_settings(APP_DIR.joinpath(APP_SETTINGS))
 
 # Initialize device instance which includes all sensors
 # and LCD display on Enviro+
 ENVIRO_HAT = f451Enviro(CONFIG)
 
 # Initialize logger and IO uploader
-LOGGER = f451Logger(CONFIG)
+LOGGER = f451Logger(CONFIG, LOGFILE=APP_LOG)
 UPLOADER = f451Uploader(CONFIG)
 
 # Verify that feeds exist
@@ -80,6 +73,7 @@ try:
 except RequestError as e:
     LOGGER.log_error(f"Application terminated due to REQUEST ERROR: {e}")
     sys.exit(1)
+
 
 # =========================================================
 #              H E L P E R   F U N C T I O N S
@@ -275,7 +269,7 @@ def main(cliArgs=None):
     displayUpdate = 0
     timeSinceUpdate = 0
     timeUpdate = time.time()
-    uploadDelay = 0                         # Ensure that we upload first reading
+    uploadDelay = 60                        # Ensure that we upload first reading
     tempCounter = 0
     numUploads = 0
 
@@ -298,6 +292,7 @@ def main(cliArgs=None):
 
         # Smooth out with some averaging to decrease jitter
         tempComp = tempRaw - ((cpuTempAvg - tempRaw) / tempCompFactor)
+        LOGGER.log_debug(f"TempComp: {tempComp} - AvgTempCPU: {cpuTempAvg} - TempRaw: {tempRaw}")
 
         pressRaw = ENVIRO_HAT.get_pressure() * 100
         humidRaw = ENVIRO_HAT.get_humidity()
