@@ -42,7 +42,7 @@ try:
 except ModuleNotFoundError:
     import tomli as tomllib
 
-from f451_logger.logger import Logger as f451Logger
+from f451_logger.logger import Logger as f451Logger, KWD_LOG_LEVEL
 from f451_uploader.uploader import Uploader as f451Uploader
 from f451_enviro.enviro import Enviro as f451Enviro, PROX_LIMIT, PROX_DEBOUNCE
 
@@ -63,13 +63,13 @@ try:
 except tomllib.TOMLDecodeError:
     sys.exit("Invalid 'settings.toml' file")      
 
-# Initialize logger and IO uploader
-LOGGER = f451Logger(CONFIG)
-UPLOADER = f451Uploader(CONFIG)
-
 # Initialize device instance which includes all sensors
 # and LCD display on Enviro+
 ENVIRO_HAT = f451Enviro(CONFIG)
+
+# Initialize logger and IO uploader
+LOGGER = f451Logger(CONFIG)
+UPLOADER = f451Uploader(CONFIG)
 
 # Verify that feeds exist
 try:
@@ -142,6 +142,12 @@ def init_cli_parser():
         "--noDisplay",
         action="store_true",
         help="do not display output on LCD",
+    )
+    parser.add_argument(
+        "--log",
+        action="store",
+        type=str,
+        help="name of log file",
     )
 
     return parser
@@ -249,6 +255,10 @@ def main(cliArgs=None):
     cpuTempsQ = deque([ENVIRO_HAT.get_CPU_temp(False)] * cpuTempsQMaxLen, maxlen=cpuTempsQMaxLen)
 
     enviroData = EnviroData(1, ENVIRO_HAT.widthLCD)
+
+    # Update log file?
+    if cliArgs.log is not None:
+        LOGGER.set_log_file(CONFIG.get(KWD_LOG_LEVEL, const.LOG_NOTSET), cliArgs.log)
 
     # Log core info
     if cliArgs.debug:
