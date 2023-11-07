@@ -138,6 +138,12 @@ def init_cli_parser():
         help="do not display output on LCD",
     )
     parser.add_argument(
+        "--progress",
+        action="store_true",
+        default=False,
+        help="show upload progress bar on LCD",
+    )
+    parser.add_argument(
         "--log",
         action="store",
         type=str,
@@ -241,6 +247,7 @@ def main(cliArgs=None):
     # Initialize LCD display
     ENVIRO_HAT.display_init()
     ENVIRO_HAT.update_sleep_mode(cliArgs.noDisplay)
+    ENVIRO_HAT.displProgress(cliArgs.progress)
 
     # Get core settings
     ioFreq = CONFIG.get(const.KWD_FREQ, const.DEF_FREQ)
@@ -283,7 +290,7 @@ def main(cliArgs=None):
             ENVIRO_HAT.update_sleep_mode(
                 (timeCurrent - displayUpdate) > ENVIRO_HAT.displSleepTime,
                 cliArgs.noDisplay
-            ) 
+            )
 
             # Get raw temp from sensor
             tempRaw = ENVIRO_HAT.get_temperature()
@@ -418,6 +425,9 @@ def main(cliArgs=None):
                 sys.stdout.write(f"Time to next update: {uploadDelay - int(timeSinceUpdate)} sec \r")
                 sys.stdout.flush()
                 time.sleep(ioWait)
+
+            # Update progress bar as needed
+            ENVIRO_HAT.display_progress(timeSinceUpdate / uploadDelay)
 
     except KeyboardInterrupt:
         exitNow = True
