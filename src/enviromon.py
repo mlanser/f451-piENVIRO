@@ -235,7 +235,7 @@ def main(cliArgs=None):
 
     # Show 'help' and exit if no args
     cliArgs, unknown = cli.parse_known_args(cliArgs)
-    if (not cliArgs and len(sys.argv) == 1) or (len(sys.argv) == 2 and cliArgs.help):
+    if (not cliArgs and len(sys.argv) == 1):
         cli.print_help(sys.stdout)
         sys.exit(0)
 
