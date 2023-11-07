@@ -238,8 +238,8 @@ def main(cliArgs=None):
         sys.exit(0)
 
     # Initialize LCD display
-    if not cliArgs.noDisplay:
-        ENVIRO_HAT.display_init()
+    ENVIRO_HAT.update_sleep_mode(cliArgs.noDisplay)
+    ENVIRO_HAT.display_init()
 
     # Get core settings
     ioFreq = CONFIG.get(const.KWD_FREQ, const.DEF_FREQ)
@@ -264,9 +264,9 @@ def main(cliArgs=None):
         LOGGER.set_log_level(const.LOG_DEBUG)
 
     # -- Main application loop --
-    displayUpdate = 0
     timeSinceUpdate = 0
     timeUpdate = time.time()
+    displayUpdate = timeUpdate
     uploadDelay = ioDelay       # Ensure that we do NOT upload first reading
     maxUploads = int(cliArgs.uploads)
     numUploads = 0
@@ -279,6 +279,10 @@ def main(cliArgs=None):
         while not exitNow:
             timeCurrent = time.time()
             timeSinceUpdate = timeCurrent - timeUpdate
+            ENVIRO_HAT.update_sleep_mode(
+                (timeCurrent - displayUpdate) > ENVIRO_HAT.displSleepTime,
+                cliArgs.noDisplay
+            ) 
 
             # Get raw temp from sensor
             tempRaw = ENVIRO_HAT.get_temperature()
@@ -336,89 +340,77 @@ def main(cliArgs=None):
             # If proximity crosses threshold, toggle the display mode
             proximity = ENVIRO_HAT.get_proximity()
 
-            if proximity > PROX_LIMIT and (timeCurrent - displayUpdate) > PROX_DEBOUNCE:
-                ENVIRO_HAT.displMode = (ENVIRO_HAT.displMode + 1) % (const.MAX_DISPL + 1)
-                displayUpdate = timeCurrent
+            if not cliArgs.noDisplay:
+                if proximity > PROX_LIMIT and (timeCurrent - displayUpdate) > PROX_DEBOUNCE:
+                    ENVIRO_HAT.displMode = (ENVIRO_HAT.displMode + 1) % (const.MAX_DISPL + 1)
+                    displayUpdate = timeCurrent
+                    ENVIRO_HAT.update_sleep_mode(False)
 
             # Check display mode. Each mode corresponds to a data type
             if ENVIRO_HAT.displMode == const.IDX_TEMP:          # type = "temperature"
                 enviroData.temperature.data.append(tempComp)
-                if not cliArgs.noDisplay:
-                    ENVIRO_HAT.display_as_graph(enviroData.temperature.as_dict())
+                ENVIRO_HAT.display_as_graph(enviroData.temperature.as_dict())
 
             elif ENVIRO_HAT.displMode == const.IDX_PRESS:       # type = "pressure"
                 enviroData.pressure.data.append(pressRaw)
-                if not cliArgs.noDisplay:
-                    ENVIRO_HAT.display_as_graph(enviroData.pressure.as_dict())
+                ENVIRO_HAT.display_as_graph(enviroData.pressure.as_dict())
 
             elif ENVIRO_HAT.displMode == const.IDX_HUMID:       # type = "humidity"
                 enviroData.humidity.data.append(humidRaw)
-                if not cliArgs.noDisplay:
-                    ENVIRO_HAT.display_as_graph(enviroData.humidity.as_dict())
+                ENVIRO_HAT.display_as_graph(enviroData.humidity.as_dict())
                     
             elif ENVIRO_HAT.displMode == const.IDX_LIGHT:       # type = "light"
                 data = ENVIRO_HAT.get_lux() if (proximity < 10) else 1    # TO DO: fix magic number
                 enviroData.light.data.append(data)
-                if not cliArgs.noDisplay:
-                    ENVIRO_HAT.display_as_graph(enviroData.light.as_dict())
+                ENVIRO_HAT.display_as_graph(enviroData.light.as_dict())
 
             elif ENVIRO_HAT.displMode == const.IDX_OXID:        # type = "oxidised"
                 data = ENVIRO_HAT.get_gas_data()
                 enviroData.oxidised.data.append(data.oxidising / 1000)
-                if not cliArgs.noDisplay:
-                    ENVIRO_HAT.display_as_graph(enviroData.oxidised.as_dict())
+                ENVIRO_HAT.display_as_graph(enviroData.oxidised.as_dict())
                     
             elif ENVIRO_HAT.displMode == const.IDX_REDUC:       # type = "reduced"
                 data = ENVIRO_HAT.get_gas_data()
                 enviroData.reduced.data.append(data.reducing / 1000)
-                if not cliArgs.noDisplay:
-                    ENVIRO_HAT.display_as_graph(enviroData.reduced.as_dict())
+                ENVIRO_HAT.display_as_graph(enviroData.reduced.as_dict())
 
             elif ENVIRO_HAT.displMode == const.IDX_NH3:         # type = "nh3"
                 data = ENVIRO_HAT.get_gas_data()
                 enviroData.nh3.data.append(data.nh3 / 1000)
-                if not cliArgs.noDisplay:
-                    ENVIRO_HAT.display_as_graph(enviroData.nh3.as_dict())
+                ENVIRO_HAT.display_as_graph(enviroData.nh3.as_dict())
 
             elif ENVIRO_HAT.displMode == const.IDX_PM1:         # type = "pm1"
                 enviroData.pm1.data.append(float(pmData.pm_ug_per_m3(1.0)))
-                if not cliArgs.noDisplay:
-                    ENVIRO_HAT.display_as_graph(enviroData.pm1.as_dict())
+                ENVIRO_HAT.display_as_graph(enviroData.pm1.as_dict())
 
             elif ENVIRO_HAT.displMode == const.IDX_PM25:        # type = "pm25"
                 enviroData.pm25.data.append(float(pm25Raw))
-                if not cliArgs.noDisplay:
-                    ENVIRO_HAT.display_as_graph(enviroData.pm25.as_dict())
+                ENVIRO_HAT.display_as_graph(enviroData.pm25.as_dict())
 
             elif ENVIRO_HAT.displMode == const.IDX_PM10:        # type = "pm10"
                 enviroData.pm10.data.append(float(pm10Raw))
-                if not cliArgs.noDisplay:
-                    ENVIRO_HAT.display_as_graph(enviroData.pm10.as_dict())
+                ENVIRO_HAT.display_as_graph(enviroData.pm10.as_dict())
 
             else:                                           # Display everything on one screen
                 enviroData.temperature.data.append(tempComp)
                 enviroData.pressure.data.append(pressRaw)
-                if not cliArgs.noDisplay:
-                    ENVIRO_HAT.display_as_text(enviroData.as_list())
+                ENVIRO_HAT.display_as_text(enviroData.as_list())
 
                 enviroData.humidity.data.append(humidRaw)
                 data = ENVIRO_HAT.get_lux() if (proximity < 10) else 1    # TODO: fix magic numbers
                 enviroData.light.data.append(data)
-                if not cliArgs.noDisplay:
-                    ENVIRO_HAT.display_as_text(enviroData.as_list())
+                ENVIRO_HAT.display_as_text(enviroData.as_list())
 
                 data = ENVIRO_HAT.get_gas_data()
                 enviroData.oxidised.data.append(data.oxidising / 1000)
                 enviroData.reduced.data.append(data.reducing / 1000)
                 enviroData.nh3.data.append(data.nh3 / 1000)
-                if not cliArgs.noDisplay:
-                    ENVIRO_HAT.display_as_text(enviroData.as_list())
+                ENVIRO_HAT.display_as_text(enviroData.as_list())
 
                 enviroData.pm1.data.append(float(pmData.pm_ug_per_m3(1.0)))
                 enviroData.pm25.data.append(float(pm25Raw))
                 enviroData.pm10.data.append(float(pm10Raw))
-                if not cliArgs.noDisplay:
-                    ENVIRO_HAT.display_as_text(enviroData.as_list())
+                ENVIRO_HAT.display_as_text(enviroData.as_list())
 
             # Let's rest a bit before we go through the loop again
             if cliArgs.debug and not ioUploadAndExit:
@@ -431,9 +423,8 @@ def main(cliArgs=None):
 
     # A bit of clean-up before we exit
     LOGGER.log_info("-- END Data Logging --")
-    if not cliArgs.noDisplay:
-        ENVIRO_HAT.display_reset()
-        ENVIRO_HAT.display_off()
+    ENVIRO_HAT.display_reset()
+    ENVIRO_HAT.display_off()
     
     now = datetime.now()
     print(f"\n{APP_NAME} [v{APP_VERSION}] - finished.\n")
