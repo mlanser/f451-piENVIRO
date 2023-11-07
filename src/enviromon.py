@@ -134,6 +134,7 @@ def init_cli_parser():
     parser.add_argument(
         "--noDisplay",
         action="store_true",
+        default=False,
         help="do not display output on LCD",
     )
     parser.add_argument(
@@ -238,8 +239,8 @@ def main(cliArgs=None):
         sys.exit(0)
 
     # Initialize LCD display
-    ENVIRO_HAT.update_sleep_mode(cliArgs.noDisplay)
     ENVIRO_HAT.display_init()
+    ENVIRO_HAT.update_sleep_mode(cliArgs.noDisplay)
 
     # Get core settings
     ioFreq = CONFIG.get(const.KWD_FREQ, const.DEF_FREQ)
