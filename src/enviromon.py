@@ -140,7 +140,6 @@ def init_cli_parser():
     parser.add_argument(
         "--progress",
         action="store_true",
-        default=False,
         help="show upload progress bar on LCD",
     )
     parser.add_argument(
