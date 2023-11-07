@@ -246,7 +246,9 @@ def main(cliArgs=None):
     # Initialize LCD display
     ENVIRO_HAT.display_init()
     ENVIRO_HAT.update_sleep_mode(cliArgs.noDisplay)
-    ENVIRO_HAT.displProgress(cliArgs.progress)
+
+    if cliArgs.progress:
+        ENVIRO_HAT.displProgress(True)
 
     # Get core settings
     ioFreq = CONFIG.get(const.KWD_FREQ, const.DEF_FREQ)
