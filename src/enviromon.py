@@ -38,7 +38,7 @@ from enviro_data import EnviroData
 
 from f451_logger.logger import Logger as f451Logger, KWD_LOG_LEVEL
 from f451_uploader.uploader import Uploader as f451Uploader
-from f451_enviro.enviro import Enviro as f451Enviro, PROX_LIMIT, PROX_DEBOUNCE
+from f451_enviro.enviro import Enviro as f451Enviro, EnviroError as f451EnviroError, PROX_LIMIT, PROX_DEBOUNCE
 
 from Adafruit_IO import RequestError, ThrottlingError
 
@@ -46,7 +46,7 @@ from Adafruit_IO import RequestError, ThrottlingError
 # =========================================================
 #          G L O B A L    V A R S   &   I N I T S
 # =========================================================
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.1.1"
 APP_NAME = "f451 piENVIRO - Enviromon"
 APP_LOG = "f451-pienviro-enviromon.log" # Individual logs for devices with multiple apps
 APP_SETTINGS = "settings.toml"          # Standard for all f451 Labs projects
@@ -186,18 +186,15 @@ async def upload_sensor_data(*args, **kwargs):
     sendQ = []
 
     # Send temperature data ?
-    if const.KWD_DATA_TEMPS in kwargs:
-        # sendQ.append(UPLOADER.aio_send_data(FEED_TEMPS, data.get(const.KWD_DATA_TEMPS)))
+    if data.get(const.KWD_DATA_TEMPS, None) is not None:
         sendQ.append(UPLOADER.aio_send_data(FEED_TEMPS.key, data.get(const.KWD_DATA_TEMPS)))
 
     # Send barometric pressure data ?
-    if const.KWD_DATA_PRESS in kwargs:
-        # sendQ.append(UPLOADER.aio_send_data(FEED_PRESS, data.get(const.KWD_DATA_PRESS)))
+    if data.get(const.KWD_DATA_PRESS, None) is not None:
         sendQ.append(UPLOADER.aio_send_data(FEED_PRESS.key, data.get(const.KWD_DATA_PRESS)))
 
     # Send humidity data ?
-    if const.KWD_DATA_HUMID in kwargs:
-        # sendQ.append(UPLOADER.aio_send_data(FEED_HUMID, data.get(const.KWD_DATA_HUMID)))
+    if data.get(const.KWD_DATA_HUMID, None) is not None:
         sendQ.append(UPLOADER.aio_send_data(FEED_HUMID.key, data.get(const.KWD_DATA_HUMID)))
 
     # pm25 = pm25Raw,
@@ -311,9 +308,14 @@ def main(cliArgs=None):
             pressRaw = ENVIRO_HAT.get_pressure()
             humidRaw = ENVIRO_HAT.get_humidity()
 
-            pmData = ENVIRO_HAT.get_particles()
-            pm25Raw = pmData.pm_ug_per_m3(2.5)      # TO DO: fix magic number
-            pm10Raw = pmData.pm_ug_per_m3(10)       # TO DO: fix magic number
+            try:
+                pmData = ENVIRO_HAT.get_particles()
+                pm25Raw = pmData.pm_ug_per_m3(2.5)      # TO DO: fix magic number
+                pm10Raw = pmData.pm_ug_per_m3(10)       # TO DO: fix magic number
+
+            except f451EnviroError as e:
+                LOGGER.log_error(f"Application terminated: {e}")
+                sys.exit(1)
 
             # Is it time to upload data?
             if timeSinceUpdate >= uploadDelay:
@@ -328,8 +330,8 @@ def main(cliArgs=None):
                     ))
 
                 except RequestError as e:
-                    LOGGER.log_error(f"Application terminated due to REQUEST ERROR: {e}")
-                    raise
+                    LOGGER.log_error(f"Application terminated: {e}")
+                    sys.exit(1)
 
                 except ThrottlingError as e:
                     # Keep increasing 'ioDelay' each time we get a 'ThrottlingError'
