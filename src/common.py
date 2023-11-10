@@ -30,8 +30,8 @@ def load_settings(settingsFile):
         with open(settingsFile, mode="rb") as fp:
             settings = tomllib.load(fp)
 
-    except tomllib.TOMLDecodeError:
-        sys.exit(f"Invalid file: '{settingsFile}'")      
+    except (FileNotFoundError, tomllib.TOMLDecodeError):
+        sys.exit(f"Missing or invalid file: '{settingsFile}'")      
 
     else:
         return settings
