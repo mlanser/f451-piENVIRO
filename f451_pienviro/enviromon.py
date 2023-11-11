@@ -27,14 +27,13 @@ import time
 import sys
 import asyncio
 
-# from random import randint
 from pathlib import Path
 from datetime import datetime
 from collections import deque
 
-import constants as const
-from common import load_settings, get_RPI_serial_num, get_RPI_ID, check_wifi
-from enviro_data import EnviroData
+from . import constants as const
+from .common import load_settings, get_RPI_serial_num, get_RPI_ID, check_wifi
+from .enviro_data import EnviroData
 
 from f451_logger.logger import Logger as f451Logger, KWD_LOG_LEVEL
 from f451_uploader.uploader import Uploader as f451Uploader
@@ -181,7 +180,7 @@ async def upload_sensor_data(*args, **kwargs):
     # We combine 'args' and 'kwargs' to allow users to provide a 'dict' with
     # all data points and/or individual data points (which could override 
     # values in the 'dict').
-    data = {**args[0], **kwargs} if args and type(args[0]) is dict else kwargs
+    data = {**args[0], **kwargs} if args and isinstance(args[0], dict) else kwargs
 
     sendQ = []
 
@@ -333,7 +332,7 @@ def main(cliArgs=None):
                     LOGGER.log_error(f"Application terminated: {e}")
                     sys.exit(1)
 
-                except ThrottlingError as e:
+                except ThrottlingError:
                     # Keep increasing 'ioDelay' each time we get a 'ThrottlingError'
                     uploadDelay += ioThrottle
                     
@@ -427,10 +426,11 @@ def main(cliArgs=None):
             if cliArgs.debug and not ioUploadAndExit:
                 sys.stdout.write(f"Time to next update: {uploadDelay - int(timeSinceUpdate)} sec \r")
                 sys.stdout.flush()
-                time.sleep(ioWait)
 
-            # Update progress bar as needed
+            # Update progress bar as needed and rest a bit 
+            # before we do this all over again :-)
             ENVIRO_HAT.display_progress(timeSinceUpdate / uploadDelay)
+            time.sleep(ioWait)
 
     except KeyboardInterrupt:
         exitNow = True

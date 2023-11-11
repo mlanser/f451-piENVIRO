@@ -6,7 +6,7 @@ most/all applications designed for the f451 Labs piENVIRO device.
 
 import sys
 from subprocess import check_output, STDOUT, DEVNULL
-import constants as const
+from . import constants as const
 
 try:
     import tomllib
@@ -85,7 +85,7 @@ def check_wifi():
     """
     try:
         result = check_output(['hostname', '-I'], stdout=DEVNULL, stderr=STDOUT)
-    except:
+    except Exception:
         result = None
 
     return True if result is not None else False
