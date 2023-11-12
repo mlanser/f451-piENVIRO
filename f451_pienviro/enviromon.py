@@ -14,6 +14,18 @@ This will start the application in the background and it will keep running
 even after terminal window is closed. Any output will be automatically redirected 
 to the 'enviromon.out' file.
 
+It's also possible to install this application via 'pip' from Github as follows:
+
+    $ python -m pip install git+ssh://git@github.com/mlanser/f451-pienviro.git
+
+Or:
+    
+    $ python -m pip install git+ssh://git@github.com/mlanser/f451-pienviro.git#egg=f451-pienviro
+ 
+If installed via 'pip' then one can launch the application as follows:
+
+    $ nohup enviromon > enviromon.out &
+
 NOTE: This code is based on the 'luftdaten_combined.py' example from the Enviro+ Python
       example files. Main modifications include support for Adafruit.io, using Python 
       'deque' to manage data queues, moving device support to a separate class, etc.
