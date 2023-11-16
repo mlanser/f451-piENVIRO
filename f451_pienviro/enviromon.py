@@ -39,10 +39,10 @@ from collections import deque
 from . import constants as const
 from .enviro_data import EnviroData
 
-from f451_common.common import load_settings, get_RPI_serial_num, get_RPI_ID, check_wifi
-from f451_logger.logger import Logger as f451Logger, KWD_LOG_LEVEL
-from f451_uploader.uploader import Uploader as f451Uploader
-from f451_enviro.enviro import Enviro as f451Enviro, EnviroError as f451EnviroError, PROX_LIMIT, PROX_DEBOUNCE
+import f451_common.common as f451Common
+import f451_logger.logger as f451Logger
+import f451_uploader.uploader as f451Uploader
+import f451_enviro.enviro as f451Enviro
 
 from Adafruit_IO import RequestError, ThrottlingError
 
@@ -57,15 +57,15 @@ APP_SETTINGS = "settings.toml"          # Standard for all f451 Labs projects
 APP_DIR = Path(__file__).parent         # Find dir for this app
 
 # Load settings
-CONFIG = load_settings(APP_DIR.joinpath(APP_SETTINGS))
+CONFIG = f451Common.load_settings(APP_DIR.joinpath(APP_SETTINGS))
 
 # Initialize device instance which includes all sensors
 # and LCD display on Enviro+
-ENVIRO_HAT = f451Enviro(CONFIG)
+ENVIRO_HAT = f451Enviro.Enviro(CONFIG)
 
 # Initialize logger and IO uploader
-LOGGER = f451Logger(CONFIG, LOGFILE=APP_LOG)
-UPLOADER = f451Uploader(CONFIG)
+LOGGER = f451Logger.Logger(CONFIG, LOGFILE=APP_LOG)
+UPLOADER = f451Uploader.Uploader(CONFIG)
 
 # Verify that feeds exist
 try:
@@ -95,8 +95,8 @@ def debug_config_info(cliArgs):
     LOGGER.log_debug(f"IO THROTTLE: {CONFIG.get(const.KWD_THROTTLE, const.DEF_THROTTLE)}")
 
     # Display Raspberry Pi serial and Wi-Fi status
-    LOGGER.log_debug(f"Raspberry Pi serial: {get_RPI_serial_num()}")
-    LOGGER.log_debug(f"Wi-Fi: {(const.STATUS_YES if check_wifi() else const.STATUS_UNKNOWN)}")
+    LOGGER.log_debug(f"Raspberry Pi serial: {f451Common.get_RPI_serial_num()}")
+    LOGGER.log_debug(f"Wi-Fi: {(f451Common.STATUS_YES if f451Common.check_wifi() else f451Common.STATUS_UNKNOWN)}")
 
     # Display CLI args
     LOGGER.log_debug(f"CLI Args:\n{cliArgs}")
@@ -260,18 +260,18 @@ def main(cliArgs=None):
     ioUploadAndExit = cliArgs.cron
 
     # Initialize core data queues
-    tempCompFactor = CONFIG.get(const.KWD_TEMP_COMP, const.DEF_TEMP_COMP_FACTOR)
-    cpuTempsQMaxLen = CONFIG.get(const.KWD_MAX_LEN_CPU_TEMPS, const.MAX_LEN_CPU_TEMPS)
+    tempCompFactor = CONFIG.get(f451Common.KWD_TEMP_COMP, f451Common.DEF_TEMP_COMP_FACTOR)
+    cpuTempsQMaxLen = CONFIG.get(f451Common.KWD_MAX_LEN_CPU_TEMPS, f451Common.MAX_LEN_CPU_TEMPS)
     cpuTempsQ = deque([ENVIRO_HAT.get_CPU_temp(False)] * cpuTempsQMaxLen, maxlen=cpuTempsQMaxLen)
 
     enviroData = EnviroData(1, ENVIRO_HAT.widthLCD)
 
     # Update log file or level?
     if cliArgs.log is not None:
-        LOGGER.set_log_file(CONFIG.get(KWD_LOG_LEVEL, const.LOG_NOTSET), cliArgs.log)
+        LOGGER.set_log_file(CONFIG.get(f451Logger.KWD_LOG_LEVEL, f451Logger.LOG_NOTSET), cliArgs.log)
 
     if cliArgs.debug:
-        LOGGER.set_log_level(const.LOG_DEBUG)
+        LOGGER.set_log_level(f451Logger.LOG_DEBUG)
 
     # -- Main application loop --
     timeSinceUpdate = 0
@@ -317,7 +317,7 @@ def main(cliArgs=None):
                 pm25Raw = pmData.pm_ug_per_m3(2.5)      # TO DO: fix magic number
                 pm10Raw = pmData.pm_ug_per_m3(10)       # TO DO: fix magic number
 
-            except f451EnviroError as e:
+            except f451Enviro.f451EnviroError as e:
                 LOGGER.log_error(f"Application terminated: {e}")
                 sys.exit(1)
 
@@ -330,7 +330,7 @@ def main(cliArgs=None):
                         humidity = round(humidRaw, ioRounding), 
                         pm25 = round(pm25Raw, ioRounding),
                         pm10 = round(pm10Raw, ioRounding), 
-                        deviceID = get_RPI_ID(const.DEF_ID_PREFIX)
+                        deviceID = f451Common.get_RPI_ID(f451Common.DEF_ID_PREFIX)
                     ))
 
                 except RequestError as e:
@@ -356,7 +356,7 @@ def main(cliArgs=None):
             proximity = ENVIRO_HAT.get_proximity()
 
             if not cliArgs.noDisplay:
-                if proximity > PROX_LIMIT and (timeCurrent - displayUpdate) > PROX_DEBOUNCE:
+                if proximity > f451Enviro.PROX_LIMIT and (timeCurrent - displayUpdate) > f451Enviro.PROX_DEBOUNCE:
                     ENVIRO_HAT.displMode = (ENVIRO_HAT.displMode + 1) % (const.MAX_DISPL + 1)
                     displayUpdate = timeCurrent
                     ENVIRO_HAT.update_sleep_mode(False)
@@ -406,7 +406,7 @@ def main(cliArgs=None):
                 enviroData.pm10.data.append(float(pm10Raw))
                 ENVIRO_HAT.display_as_graph(enviroData.pm10.as_dict())
 
-            else:                                           # Display everything on one screen
+            else:                                               # Display everything on one screen
                 enviroData.temperature.data.append(tempComp)
                 enviroData.pressure.data.append(pressRaw)
                 ENVIRO_HAT.display_as_text(enviroData.as_list())

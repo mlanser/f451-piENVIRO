@@ -8,60 +8,21 @@ keyword equivalents for attributes listed in the `settings.toml` file.
 # =========================================================
 #              M I S C .   C O N S T A N T S
 # =========================================================
-# DELIM_STD = "|"
-# DELIM_VAL = ":"
-# EMPTY_STR = ""
-
-# RGB_BLACK = (0, 0, 0)
-# RGB_WHITE = (255, 255, 255)
-# RGB_BLUE = (0, 0, 255)
-# RGB_CYAN = (0, 255, 255)
-# RGB_GREEN = (0, 255, 0)
-# RGB_YELLOW = (255, 255, 0)
-# RGB_RED = (255, 0, 0)
-
-# RGB_PROGRESS = (127, 0, 255) # Use for progressbar at bottom of LED
-
-# ROTATE_90 = 90              # Rotate 90 degrees    
-
-# DEF_UPLOADS = -1            # Number of uploads. If -1, then no limit.
 DEF_FREQ = 600              # Default delay between uploads in seconds
 DEF_DELAY = 300             # Default delay before first upload in seconds
 DEF_WAIT = 1                # Default delay between sensor reads
 DEF_THROTTLE = 120          # Default additional delay on 'ThrottlingError'
 DEF_ROUNDING = 2            # Default 'rounding' precision for uploaded data
 
-DEF_ID_PREFIX = "raspi-"    # Default prefix for ID string
-
-# Tuning factor for compensation. Decrease this number to adjust the
-# temperature down, and increase to adjust up
-DEF_TEMP_COMP_FACTOR = 2.25
-MAX_LEN_CPU_TEMPS = 5       # Max number of CPU temps
-
-LOG_NOTSET = 0
-LOG_DEBUG = 10
-# LOG_INFO = 20
-# LOG_WARNING = 30
-# LOG_ERROR = 40
-# LOG_CRITICAL = 50
-
-STATUS_YES = "yes"
-STATUS_NO = "no"
-STATUS_UNKNOWN = "unknown"
-
 
 # =========================================================
 #    K E Y W O R D S   F O R   C O N F I G   F I L E S
 # =========================================================
-KWD_TEMP_COMP = "TEMP_COMP"
-KWD_MAX_LEN_CPU_TEMPS = "CPU_TEMPS"
-
 KWD_FREQ = "FREQ"
 KWD_DELAY = "DELAY"
 KWD_WAIT = "WAIT"
 KWD_THROTTLE = "THROTTLE"
 KWD_ROUNDING = "ROUNDING"
-# KWD_UPLOADS = "UPLOADS"
 KWD_FEED_TEMPS = "FEED_TEMPS"
 KWD_FEED_PRESS = "FEED_PRESS"
 KWD_FEED_HUMID = "FEED_HUMID"
