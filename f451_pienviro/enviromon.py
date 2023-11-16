@@ -37,9 +37,9 @@ from datetime import datetime
 from collections import deque
 
 from . import constants as const
-from .common import load_settings, get_RPI_serial_num, get_RPI_ID, check_wifi
 from .enviro_data import EnviroData
 
+from f451_common.common import load_settings, get_RPI_serial_num, get_RPI_ID, check_wifi
 from f451_logger.logger import Logger as f451Logger, KWD_LOG_LEVEL
 from f451_uploader.uploader import Uploader as f451Uploader
 from f451_enviro.enviro import Enviro as f451Enviro, EnviroError as f451EnviroError, PROX_LIMIT, PROX_DEBOUNCE

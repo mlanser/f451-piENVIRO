@@ -15,6 +15,7 @@ classifiers = [
 ]
 keywords = ["enviro", "f451"]
 dependencies = [
+    "f451-common",
     "f451-logger",
     "f451-uploader",
     "f451-enviro",
