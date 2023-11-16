@@ -2,9 +2,9 @@
 """f451 Labs piENVIRO Enviromon application.
 
 This application is designed for the f451 Labs piENVIRO device which is also 
-equipped with an Enviro+ add-on. The object is to continously read environment 
-data (e.g. temperature, barometric pressure, and humidity from the Enviro+ 
-sensors and then upload the data to the Adafruit IO service.
+equipped with an Enviro+ add-on. The main objective is to continously read 
+environment data (e.g. temperature, barometric pressure, and humidity from 
+the Enviro+ sensors and then upload the data to the Adafruit IO service.
 
 To launch this application from terminal:
 
@@ -50,8 +50,8 @@ from Adafruit_IO import RequestError, ThrottlingError
 # =========================================================
 #          G L O B A L    V A R S   &   I N I T S
 # =========================================================
-APP_VERSION = "0.1.1"
-APP_NAME = "f451 piENVIRO - Enviromon"
+APP_VERSION = "0.1.0"
+APP_NAME = "f451 piENVIRO - EnviroMon"
 APP_LOG = "f451-pienviro-enviromon.log" # Individual logs for devices with multiple apps
 APP_SETTINGS = "settings.toml"          # Standard for all f451 Labs projects
 APP_DIR = Path(__file__).parent         # Find dir for this app

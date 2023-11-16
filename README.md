@@ -36,7 +36,7 @@ It is recommended to copy the '*settings.example*' to '*settings.toml*' and then
 
 - **DISPLAY**: 'int' - 0..10
     - 0..9 - *display modes with single data point (e.g. temperature, etc.) and scrolling line graph and color bars*
-    - 10 - *display mode showing all data ponits in all text in 2 columns*
+    - 10 - *display mode showing all data points in all text in 2 columns*
 
 - **DELAY**: 'int' - delay in seconds between uploads to Adafruit IO.
     - Smaller number means more freq uploads and higher data rate
