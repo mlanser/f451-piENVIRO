@@ -166,8 +166,8 @@ def init_cli_parser():
 async def upload_sensor_data(*args, **kwargs):
     """Send sensor data to cloud services.
     
-    This help parses and send enviro data to Adafruit IO 
-    and Arduino Cloud.
+    This helper function parses and sends enviro data to 
+    Adafruit IO and/or Arduino Cloud.
 
     NOTE: This function will upload specific environment 
           data using the following keywords:
