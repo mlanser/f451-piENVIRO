@@ -25,6 +25,9 @@ NOTE: This code is based on the 'luftdaten_combined.py' example from the Enviro+
 
       We also support additional display modes including a screen-saver mode, support 
       for 'settings.toml', and more.
+
+Dependencies:
+    - adafruit-io - only install if you have an account with Adafruit IO
 """
 
 import argparse
@@ -37,12 +40,13 @@ from datetime import datetime
 from collections import deque
 
 from . import constants as const
-from .enviro_data import EnviroData
 
 import f451_common.common as f451Common
 import f451_logger.logger as f451Logger
 import f451_uploader.uploader as f451Uploader
+
 import f451_enviro.enviro as f451Enviro
+import f451_enviro.enviro_data as f451EnviroData
 
 from Adafruit_IO import RequestError, ThrottlingError
 
@@ -264,7 +268,7 @@ def main(cliArgs=None):
     cpuTempsQMaxLen = CONFIG.get(f451Common.KWD_MAX_LEN_CPU_TEMPS, f451Common.MAX_LEN_CPU_TEMPS)
     cpuTempsQ = deque([ENVIRO_HAT.get_CPU_temp(False)] * cpuTempsQMaxLen, maxlen=cpuTempsQMaxLen)
 
-    enviroData = EnviroData(1, ENVIRO_HAT.widthLCD)
+    enviroData = f451EnviroData.EnviroData(1, ENVIRO_HAT.widthLCD)
 
     # Update log file or level?
     if cliArgs.log is not None:
