@@ -43,7 +43,7 @@ from . import constants as const
 
 import f451_common.common as f451Common
 import f451_logger.logger as f451Logger
-import f451_uploader.uploader as f451Uploader
+import f451_cloud.cloud as f451Cloud
 
 import f451_enviro.enviro as f451Enviro
 import f451_enviro.enviro_data as f451EnviroData
@@ -67,9 +67,9 @@ CONFIG = f451Common.load_settings(APP_DIR.joinpath(APP_SETTINGS))
 # and LCD display on Enviro+
 ENVIRO_HAT = f451Enviro.Enviro(CONFIG)
 
-# Initialize logger and IO uploader
+# Initialize logger and IO cloud
 LOGGER = f451Logger.Logger(CONFIG, LOGFILE=APP_LOG)
-UPLOADER = f451Uploader.Uploader(CONFIG)
+UPLOADER = f451Cloud.Cloud(CONFIG)
 
 # Verify that feeds exist
 try:
