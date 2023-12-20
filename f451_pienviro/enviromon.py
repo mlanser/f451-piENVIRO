@@ -54,7 +54,7 @@ from Adafruit_IO import RequestError, ThrottlingError
 # =========================================================
 #          G L O B A L    V A R S   &   I N I T S
 # =========================================================
-APP_VERSION = '0.3.1'
+APP_VERSION = '0.3.2'
 APP_NAME = 'f451 piENVIRO - EnviroMon'
 APP_LOG = 'f451-pienviro-enviromon.log'     # Individual logs for devices with multiple apps
 APP_SETTINGS = 'settings.toml'              # Standard for all f451 Labs projects
