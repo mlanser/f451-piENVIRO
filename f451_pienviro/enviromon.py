@@ -374,7 +374,11 @@ def update_Enviro_LCD_display_mode(app, timeCurrent, proximity):
         app.sensors['Enviro'].update_display_mode()
         app.sensors['Enviro'].update_sleep_mode(False)
         app.displayUpdate = timeCurrent
+        print("boom!")
 
+    # if proximity > const.PROX_LIMIT and (timeCurrent - displayUpdate) > const.PROX_DEBOUNCE:
+    #     piEnviro.displMode = (piEnviro.displMode + 1) % (const.MAX_DISPL + 1)
+    #     displayUpdate = timeCurrent
 
 def update_Enviro_LCD(enviro, data, colors=None):
     """Update Enviro+ LCD depending on display mode
