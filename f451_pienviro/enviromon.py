@@ -350,6 +350,32 @@ async def upload_sensor_data(app, *args, **kwargs):
     await asyncio.gather(*sendQ)
 
 
+def update_data(data, raw):
+    """Update data set with new sensor data"""
+    data.temperature.data.append(raw['temperature'])
+    data.pressure.data.append(raw['pressure'])
+    data.humidity.data.append(raw['humidity'])
+
+    data.light.data.append(raw['light'])
+    data.oxidised.data.append(raw['gasData'].oxidising / 1000)
+    data.reduced.data.append(raw['gasData'].reducing / 1000)
+    data.nh3.data.append(raw['gasData'].nh3 / 1000)
+    data.pm1.data.append(raw['pm1'])
+    data.pm25.data.append(raw['pm25'])
+    data.pm10.data.append(raw['pm10'])
+
+
+def update_Enviro_LCD_display_mode(app, timeCurrent, proximity):
+    if (
+        proximity > f451Enviro.PROX_LIMIT
+        and (timeCurrent - app.displayUpdate) > f451Enviro.PROX_DEBOUNCE
+    ):
+        # app.sensors['Enviro'].displMode = (app.sensors['Enviro'].displMode + 1) % (const.MAX_DISPL + 1)
+        app.sensors['Enviro'].update_display_mode()
+        app.sensors['Enviro'].update_sleep_mode(False)
+        # app.displayUpdate = timeCurrent
+
+
 def update_Enviro_LCD(enviro, data, colors=None):
     """Update Enviro+ LCD depending on display mode
 
@@ -375,73 +401,85 @@ def update_Enviro_LCD(enviro, data, colors=None):
         return f451Common.get_tri_colors(colors, True) if all(data.limits) else None
 
     # Check display mode. Each mode corresponds to a data type
-    if enviro.displMode == const.DISPL_TEMP:  # type = "temperature"
+    # Show temperature?
+    if enviro.displMode == const.DISPL_TEMP:
         minMax = _minMax(data.temperature.as_tuple().data)
         dataClean = f451Enviro.prep_data(data.temperature.as_tuple())
         colorMap = _get_color_map(dataClean, colors)
         enviro.display_as_graph(dataClean, minMax, colorMap, APP_TOPLBL_LEN)
 
-    elif enviro.displMode == const.DISPL_PRESS:  # type = "pressure"
+    # Show pressure?
+    elif enviro.displMode == const.DISPL_PRESS:
         minMax = _minMax(data.pressure.as_tuple().data)
         dataClean = f451Enviro.prep_data(data.pressure.as_tuple())
         colorMap = _get_color_map(dataClean, colors)
         enviro.display_as_graph(dataClean, minMax, colorMap, APP_TOPLBL_LEN)
 
-    elif enviro.displMode == const.DISPL_HUMID:  # type = "humidity"
+    # Show humidity?
+    elif enviro.displMode == const.DISPL_HUMID:
         minMax = _minMax(data.humidity.as_tuple().data)
         dataClean = f451Enviro.prep_data(data.humidity.as_tuple())
         colorMap = _get_color_map(dataClean, colors)
         enviro.display_as_graph(dataClean, minMax, colorMap, APP_TOPLBL_LEN)
 
-    elif enviro.displMode == const.DISPL_LIGHT:  # type = "light"
+    # Show light?
+    elif enviro.displMode == const.DISPL_LIGHT:
         minMax = _minMax(data.light.as_tuple().data)
         dataClean = f451Enviro.prep_data(data.light.as_tuple())
         colorMap = _get_color_map(dataClean, colors)
         enviro.display_as_graph(dataClean, minMax, colorMap, APP_TOPLBL_LEN)
 
-    elif enviro.displMode == const.DISPL_OXID:  # type = "oxidised"
+    # Show oxidised?
+    elif enviro.displMode == const.DISPL_OXID:
         minMax = _minMax(data.oxidising.as_tuple().data)
         dataClean = f451Enviro.prep_data(data.oxidising.as_tuple())
         colorMap = _get_color_map(dataClean, colors)
         enviro.display_as_graph(dataClean, minMax, colorMap, APP_TOPLBL_LEN)
 
-    elif enviro.displMode == const.DISPL_REDUC:  # type = "reduced"
+    # Show reduced?
+    elif enviro.displMode == const.DISPL_REDUC:
         minMax = _minMax(data.reducing.as_tuple().data)
         dataClean = f451Enviro.prep_data(data.reducing.as_tuple())
         colorMap = _get_color_map(dataClean, colors)
         enviro.display_as_graph(dataClean, minMax, colorMap, APP_TOPLBL_LEN)
 
-    elif enviro.displMode == const.DISPL_NH3:  # type = "nh3"
+    # Show nh3?
+    elif enviro.displMode == const.DISPL_NH3:
         minMax = _minMax(data.nh3.as_tuple().data)
         dataClean = f451Enviro.prep_data(data.nh3.as_tuple())
         colorMap = _get_color_map(dataClean, colors)
         enviro.display_as_graph(dataClean, minMax, colorMap, APP_TOPLBL_LEN)
 
-    elif enviro.displMode == const.DISPL_PM1:  # type = "pm1"
+    # Show pm1?
+    elif enviro.displMode == const.DISPL_PM1:
         minMax = _minMax(data.pm1.as_tuple().data)
         dataClean = f451Enviro.prep_data(data.pm1.as_tuple())
         colorMap = _get_color_map(dataClean, colors)
         enviro.display_as_graph(dataClean, minMax, colorMap, APP_TOPLBL_LEN)
 
-    elif enviro.displMode == const.DISPL_PM25:  # type = "pm25"
+    # Show pm25?
+    elif enviro.displMode == const.DISPL_PM25:
         minMax = _minMax(data.pm25.as_tuple().data)
         dataClean = f451Enviro.prep_data(data.pm25.as_tuple())
         colorMap = _get_color_map(dataClean, colors)
         enviro.display_as_graph(dataClean, minMax, colorMap, APP_TOPLBL_LEN)
 
-    elif enviro.displMode == const.DISPL_PM10:  # type = "pm10"
+    # Show pm10?
+    elif enviro.displMode == const.DISPL_PM10:
         minMax = _minMax(data.pm10.as_tuple().data)
         dataClean = f451Enviro.prep_data(data.pm10.as_tuple())
         colorMap = _get_color_map(dataClean, colors)
         enviro.display_as_graph(dataClean, minMax, colorMap, APP_TOPLBL_LEN)
 
-    elif enviro.displMode == const.DISPL_ALL:  # Display everything on one screen
+    # Show everything on one screen?
+    elif enviro.displMode == const.DISPL_ALL:
         minMax = _minMax(data.rndpcnt.as_tuple().data)
         dataClean = f451Enviro.prep_data(data.rndpcnt.as_tuple())
         colorMap = _get_color_map(dataClean, colors)
         enviro.display_as_graph(dataClean, minMax, colorMap, APP_TOPLBL_LEN)
 
-    else:  # Display sparkles
+    # Show sparkles? :-)
+    else:
         enviro.display_sparkle()
 
 
@@ -622,27 +660,20 @@ def collect_data(app, data, cpuTempsQ, timeCurrent, cliUI=False):
             exitApp = (app.maxUploads > 0) and (app.numUploads >= app.maxUploads)
             app.update_action(cliUI, None)
 
-    # Update data set and display to terminal as needed
-    data.temperature.data.append(tempComp)
-    data.pressure.data.append(pressRaw)
-    data.humidity.data.append(humidRaw)
-
-    data.light.data.append(lux)
-    data.oxidised.data.append(gasData.oxidising / 1000)
-    data.reduced.data.append(gasData.reducing / 1000)
-    data.nh3.data.append(gasData.nh3 / 1000)
-    data.pm1.data.append(float(pmData.pm_ug_per_m3(1.0)))
-    data.pm25.data.append(float(pm25Raw))
-    data.pm10.data.append(float(pm10Raw))
-
     # Check 'proximity' value to determine when to toggle display mode
-    if (
-        proximity > f451Enviro.PROX_LIMIT
-        and (timeCurrent - app.displayUpdate) > f451Enviro.PROX_DEBOUNCE
-    ):
-        app.sensors['Enviro'].displMode = (app.sensors['Enviro'].displMode + 1) % (const.MAX_DISPL + 1)
-        app.displayUpdate = timeCurrent
-        app.sensors['Enviro'].update_sleep_mode(False)
+    update_Enviro_LCD_display_mode(app, timeCurrent, proximity)
+
+    # Update data set and display to terminal as needed
+    update_data(data, {
+        'temperature': tempComp,
+        'pressure': pressRaw,
+        'humidity': humidRaw,
+        'light': lux,
+        'gasData': gasData,
+        'pm1': float(pmData.pm_ug_per_m3(1.0)),
+        'pm25': float(pm25Raw),
+        'pm10': float(pm10Raw)
+    })
 
     update_Enviro_LCD(app.sensors['Enviro'], data)
     app.update_data(
