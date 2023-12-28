@@ -70,7 +70,7 @@ install_rich_traceback(show_locals=True)
 # =========================================================
 #          G L O B A L S   A N D   H E L P E R S
 # =========================================================
-APP_VERSION = '1.0.1'
+APP_VERSION = '1.0.2'
 APP_NAME = 'f451 Labs - EnviroMon'
 APP_NAME_SHORT = 'EnviroMon'
 APP_LOG = 'f451-enviromon.log'      # Individual logs for devices with multiple apps
