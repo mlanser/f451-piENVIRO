@@ -1,4 +1,4 @@
-# Instructions for f451-piENVIRO v0.3.2
+# Instructions for f451-piENVIRO v1.0.0
 
 ## Custom application settings in SETTINGS.TOML
 
