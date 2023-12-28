@@ -5,6 +5,7 @@ the f451 Labs piENVIRO application. Some of the constants are used as
 keyword equivalents for attributes listed in the `settings.toml` file.
 """
 
+#fmt: off
 # =========================================================
 #              M I S C .   C O N S T A N T S
 # =========================================================
@@ -13,6 +14,7 @@ DEF_DELAY = 300     # Default delay before first upload in seconds
 DEF_WAIT = 1        # Default delay between sensor reads
 DEF_THROTTLE = 120  # Default additional delay on 'ThrottlingError'
 DEF_ROUNDING = 2    # Default 'rounding' precision for uploaded data
+#fmt: on
 
 
 # =========================================================
@@ -23,6 +25,8 @@ KWD_DELAY = 'DELAY'
 KWD_WAIT = 'WAIT'
 KWD_THROTTLE = 'THROTTLE'
 KWD_ROUNDING = 'ROUNDING'
+
+# -- Support for environment data --
 KWD_FEED_TEMPS = 'FEED_TEMPS'
 KWD_FEED_PRESS = 'FEED_PRESS'
 KWD_FEED_HUMID = 'FEED_HUMID'
@@ -34,20 +38,24 @@ KWD_DATA_HUMID = 'humidity'
 # KWD_DATA_P1 = "P1"
 
 
+# fmt: off
 # =========================================================
 #   C O N S T A N T S   F O R   D I S P L A Y   M O D E S
 # =========================================================
-IDX_ALL = 0  # Display all data
-IDX_TEMP = 1
-IDX_PRESS = 2
-IDX_HUMID = 3
-IDX_LIGHT = 4
-IDX_OXID = 5
-IDX_REDUC = 6
-IDX_NH3 = 7
-IDX_PM1 = 8
-IDX_PM25 = 9
-IDX_PM10 = 10
+DISPL_SPARKLE = 0               # Display sparkles
+DISPL_TEMP = 1                  # Display temperature
+DISPL_PRESS = 2                 # Display barometric pressure
+DISPL_HUMID = 3                 # Display humidity
 
-MIN_DISPL = IDX_ALL     # Cannot be smaller than smallest IDX_xx value
-MAX_DISPL = IDX_PM10    # Cannot be larger than largest IDX_xx value
+DISPL_LIGHT = 4                 # Display illumination
+DISPL_OXID = 5                  
+DISPL_REDUC = 6
+DISPL_NH3 = 7
+DISPL_PM1 = 8
+DISPL_PM25 = 9
+DISPL_PM10 = 10
+DISPL_ALL = 11                  # Display all data as (dual-column) text
+
+MIN_DISPL = DISPL_SPARKLE       # Cannot be smaller than smallest DISPL_xx value
+MAX_DISPL = DISPL_ALL           # Cannot be larger than largest DISPL_xx value
+#fmt: on
