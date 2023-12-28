@@ -70,7 +70,7 @@ install_rich_traceback(show_locals=True)
 # =========================================================
 #          G L O B A L S   A N D   H E L P E R S
 # =========================================================
-APP_VERSION = '1.0.0'
+APP_VERSION = '1.0.1'
 APP_NAME = 'f451 Labs - EnviroMon'
 APP_NAME_SHORT = 'EnviroMon'
 APP_LOG = 'f451-enviromon.log'      # Individual logs for devices with multiple apps
@@ -710,7 +710,7 @@ def main_loop(app, data, cliUI=False):
             app.timeSinceUpdate = timeCurrent - app.timeUpdate
             app.sensors['Enviro'].update_sleep_mode(
                 (timeCurrent - app.displayUpdate) > app.sensors['Enviro'].displSleepTime, # Time to sleep?
-                # cliArgs.noLED,                                                            # Force no LED?
+                # cliArgs.noLCD,                                                            # Force no LED?
                 app.sensors['Enviro'].displSleepMode                                      # Already asleep?
             )
             # fmt: on
@@ -730,12 +730,13 @@ def main_loop(app, data, cliUI=False):
                 if app.ioWait > APP_MIN_PROG_WAIT:
                     app.update_progress(cliUI, None, 'Waiting for speed test')
 
-            # Update UI and SenseHAT LED as needed
-            # app.update_data(
-            #     cliUI, f451CLIUI.prep_data(data.as_dict(), APP_DATA_TYPES, APP_DELTA_FACTOR)
-            # )
-            # update_Enviro_LCD(app.sensors['Enviro'], data)
-            # app.sensors['Enviro'].display_progress(app.timeSinceUpdate / app.uploadDelay)
+            # Update UI and SenseHAT LED as needed even when we're just waiting for 
+            # next upload. This means that more sparkles are generated as well
+            app.update_data(
+                cliUI, f451CLIUI.prep_data(data.as_dict(), APP_DATA_TYPES, APP_DELTA_FACTOR)
+            )
+            update_Enviro_LCD(app.sensors['Enviro'], data)
+            app.sensors['Enviro'].display_progress(app.timeSinceUpdate / app.uploadDelay)
 
         except KeyboardInterrupt:
             exitApp = True
@@ -812,7 +813,7 @@ def main(cliArgs=None):  # sourcery skip: extract-method
         # events and set 'sleep' and 'display' modes.
         appRT.add_sensor('Enviro', f451Enviro.Enviro)
         appRT.sensors['Enviro'].display_init(**APP_DISPLAY_MODES)
-        appRT.sensors['Enviro'].update_sleep_mode(cliArgs.noLED)
+        appRT.sensors['Enviro'].update_sleep_mode(cliArgs.noLCD)
         appRT.sensors['Enviro'].displProgress = cliArgs.progress
         appRT.sensors['Enviro'].display_message(APP_NAME)
 
