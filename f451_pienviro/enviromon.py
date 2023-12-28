@@ -81,7 +81,7 @@ APP_MIN_PROG_WAIT = 1               # Remaining min (loop) wait time to display 
 APP_WAIT_1SEC = 1
 APP_MAX_DATA = 120                  # Max number of data points in the queue
 APP_DELTA_FACTOR = 0.02             # Any change within X% is considered negligable
-APP_TOPLBL_LEN = 5                  # Num chars of label to display in top bar
+APP_TOPLBL_LEN = 4                  # Num chars of label to display in top bar
 
 APP_DATA_TYPES = [
     const.KWD_DATA_TEMPS,           # 'temperature' in C
@@ -373,7 +373,7 @@ def update_Enviro_LCD_display_mode(app, timeCurrent, proximity):
         # app.sensors['Enviro'].displMode = (app.sensors['Enviro'].displMode + 1) % (const.MAX_DISPL + 1)
         app.sensors['Enviro'].update_display_mode()
         app.sensors['Enviro'].update_sleep_mode(False)
-        # app.displayUpdate = timeCurrent
+        app.displayUpdate = timeCurrent
 
 
 def update_Enviro_LCD(enviro, data, colors=None):
