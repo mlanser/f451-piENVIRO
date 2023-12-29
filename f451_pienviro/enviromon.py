@@ -674,8 +674,8 @@ def collect_data(app, data, cpuTempsQ, timeCurrent, cliUI=False):
         app.sensors['Enviro'].update_display_mode()
         app.sensors['Enviro'].update_sleep_mode(False)
         app.displayUpdate = timeCurrent
-        print("boom!")
-        assert False
+        # print("boom!")
+        # assert False
 
     # Update data set and display to terminal as needed
     update_data(data, {
