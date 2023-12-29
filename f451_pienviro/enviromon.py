@@ -665,15 +665,15 @@ def collect_data(app, data, cpuTempsQ, timeCurrent, cliUI=False):
             app.update_action(cliUI, None)
 
     # Check 'proximity' value to determine when to toggle display mode
-    # update_Enviro_LCD_display_mode(app, timeCurrent, proximity)
-    if (
-        proximity > f451Enviro.PROX_LIMIT
-        and (timeCurrent - app.displayUpdate) > f451Enviro.PROX_DEBOUNCE
-    ):
-        # app.sensors['Enviro'].displMode = (app.sensors['Enviro'].displMode + 1) % (const.MAX_DISPL + 1)
-        app.sensors['Enviro'].update_display_mode()
-        app.sensors['Enviro'].update_sleep_mode(False)
-        app.displayUpdate = timeCurrent
+    update_Enviro_LCD_display_mode(app, timeCurrent, proximity)
+    # if (
+    #     proximity > f451Enviro.PROX_LIMIT
+    #     and (timeCurrent - app.displayUpdate) > f451Enviro.PROX_DEBOUNCE
+    # ):
+    #     # app.sensors['Enviro'].displMode = (app.sensors['Enviro'].displMode + 1) % (const.MAX_DISPL + 1)
+    #     app.sensors['Enviro'].update_display_mode()
+    #     app.sensors['Enviro'].update_sleep_mode(False)
+    #     app.displayUpdate = timeCurrent
         # print("boom!")
         # assert False
 
