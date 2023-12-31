@@ -9,11 +9,11 @@ keyword equivalents for attributes listed in the `settings.toml` file.
 # =========================================================
 #              M I S C .   C O N S T A N T S
 # =========================================================
-DEF_FREQ = 600      # Default delay between uploads in seconds
-DEF_DELAY = 300     # Default delay before first upload in seconds
-DEF_WAIT = 1        # Default delay between sensor reads
-DEF_THROTTLE = 120  # Default additional delay on 'ThrottlingError'
-DEF_ROUNDING = 2    # Default 'rounding' precision for uploaded data
+DEF_FREQ = 600                  # Default delay between uploads in seconds
+DEF_DELAY = 300                 # Default delay before first upload in seconds
+DEF_WAIT = 1                    # Default delay between sensor reads
+DEF_THROTTLE = 120              # Default additional delay on 'ThrottlingError'
+DEF_ROUNDING = 2                # Default 'rounding' precision for uploaded data
 #fmt: on
 
 
@@ -42,20 +42,16 @@ KWD_DATA_HUMID = 'humidity'
 # =========================================================
 #   C O N S T A N T S   F O R   D I S P L A Y   M O D E S
 # =========================================================
-DISPL_SPARKLE = 0               # Display sparkles
-DISPL_TEMP = 1                  # Display temperature
-DISPL_PRESS = 2                 # Display barometric pressure
-DISPL_HUMID = 3                 # Display humidity
+DISPL_TEMPS = KWD_DATA_TEMPS    # Display download speed
+DISPL_PRESS = KWD_DATA_PRESS    # Display upload speed
+DISPL_HUMID = KWD_DATA_HUMID    # Display ping response time
 
-DISPL_LIGHT = 4                 # Display illumination
-DISPL_OXID = 5                  
-DISPL_REDUC = 6
-DISPL_NH3 = 7
-DISPL_PM1 = 8
-DISPL_PM25 = 9
-DISPL_PM10 = 10
-DISPL_ALL = 11                  # Display all data as (dual-column) text
-
-MIN_DISPL = DISPL_SPARKLE       # Cannot be smaller than smallest DISPL_xx value
-MAX_DISPL = DISPL_ALL           # Cannot be larger than largest DISPL_xx value
+DISPL_LIGHT = 'light'           # Display illumination
+DISPL_OXID = 'oxidised'
+DISPL_REDUC = 'reduced'
+DISPL_NH3 = 'nh3'
+DISPL_PM1 = 'pm1'
+DISPL_PM25 = 'pm25'
+DISPL_PM10 = 'pm10'
+DISPL_ALL = 'all'               # Display all data as (dual-column) text
 #fmt: on

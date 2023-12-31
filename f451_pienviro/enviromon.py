@@ -30,7 +30,7 @@ NOTE: Parts of this code is based on ideas found in the 'luftdaten_combined.py' 
       and more.
 
 Dependencies:
-    - adafruit-io - only install if you have an account with Adafruit IO
+ - adafruit-io - only install if you have an account with Adafruit IO
 """
 
 import time
@@ -89,18 +89,28 @@ APP_DATA_TYPES = [
     const.KWD_DATA_HUMID            # 'humidity'
 ]
 
-APP_DISPLAY_MODES = {
-    f451Enviro.KWD_DISPLAY_MIN: const.MIN_DISPL,
-    f451Enviro.KWD_DISPLAY_MAX: const.MAX_DISPL,
-}
+APP_DISPL_MODES = [
+    const.DISPL_TEMPS,              # Display 'temperature' in C
+    const.DISPL_PRESS,              # Display barometric 'pressure'
+    const.DISPL_HUMID,              # Display 'humidity'
+    # const.DISPL_LIGHT,
+    # const.DISPL_OXID,
+    # const.DISPL_REDUC,
+    # const.DISPL_NH3,
+    # const.DISPL_PM1,
+    # const.DISPL_PM25,
+    # const.DISPL_PM10,
+    const.DISPL_ALL                 # Display all data as (dual-column) text
+]
 
-COLOR_LOGO = (255, 0, 0)
+COLOR_LOGO_FG = (255, 0, 0)
+COLOR_LOGO_BG = (67, 70, 75)
 
 class AppRT(f451Common.Runtime):
     """Application runtime object.
     
     We use this object to store/manage configuration and any other variables
-    required to run this application as object atrtribustes. This allows us to
+    required to run this application as object attributes. This allows us to
     have fewer global variables.
     """
     def __init__(self, appName, appVersion, appNameShort=None, appLog=None, appSettings=None):
@@ -114,6 +124,20 @@ class AppRT(f451Common.Runtime):
             Path(__file__).parent   # Find dir for this app
         )
         
+    def _init_log_settings(self, cliArgs):
+        """Helper for setting logger settings"""
+        if cliArgs.debug:
+            self.logLvl = f451Logger.LOG_DEBUG
+            self.debugMode = True
+        else:
+            self.logLvl = self.config.get(f451Logger.KWD_LOG_LEVEL, f451Logger.LOG_NOTSET)
+            self.debugMode = (self.logLvl == f451Logger.LOG_DEBUG)
+
+        self.logger.set_log_level(self.logLvl)
+
+        if cliArgs.log is not None:
+            self.logger.set_log_file(appRT.logLvl, cliArgs.log)
+
     def init_runtime(self, cliArgs, data):
         """Initialize the 'runtime' variable
         
@@ -137,18 +161,8 @@ class AppRT(f451Common.Runtime):
         self.ioRounding = self.config.get(const.KWD_ROUNDING, const.DEF_ROUNDING)
         self.ioUploadAndExit = False
 
-        # Update log file or level?
-        if cliArgs.debug:
-            self.logLvl = f451Logger.LOG_DEBUG
-            self.debugMode = True
-        else:
-            self.logLvl = self.config.get(f451Logger.KWD_LOG_LEVEL, f451Logger.LOG_NOTSET)
-            self.debugMode = (self.logLvl == f451Logger.LOG_DEBUG)
-
-        self.logger.set_log_level(self.logLvl)
-
-        if cliArgs.log is not None:
-            self.logger.set_log_file(appRT.logLvl, cliArgs.log)
+        # Initialize log file/level
+        self._init_log_settings(cliArgs)
 
         # Initialize various counters, etc.
         self.timeSinceUpdate = float(0)
@@ -159,6 +173,7 @@ class AppRT(f451Common.Runtime):
         self.numUploads = 0
         self.loopWait = APP_WAIT_1SEC   # Wait time between main loop cycles
 
+        # Configure CPU temp comp factor
         self.tempCompFactor = self.config.get(f451Common.KWD_TEMP_COMP, f451Common.DEF_TEMP_COMP_FACTOR)
         self.cpuTempsQMaxLen = self.config.get(f451Common.KWD_MAX_LEN_CPU_TEMPS, f451Common.MAX_LEN_CPU_TEMPS)
 
@@ -183,8 +198,8 @@ class AppRT(f451Common.Runtime):
         """Initialize a CPU temperature queue
         
         We use the data in this queue to calculate average CPU temps
-        which we then can use to compensate temp reading from the Sense 
-        HAT temp sensors.
+        which we then can use to compensate temp reading from the 
+        Enviro+ temp sensors.
         """
         return (
             deque(
@@ -217,9 +232,7 @@ class AppRT(f451Common.Runtime):
         self.logger.log_debug(f'IO THROTTLE: {self.ioThrottle}')
 
         # Display Raspberry Pi serial and Wi-Fi status
-        self.logger.log_debug(
-            f'Raspberry Pi serial: {f451Common.get_RPI_serial_num()}'
-        )
+        self.logger.log_debug(f'Raspberry Pi serial: {f451Common.get_RPI_serial_num()}')
         self.logger.log_debug(
             f'Wi-Fi: {(f451Common.STATUS_YES if f451Common.check_wifi() else f451Common.STATUS_UNKNOWN)}'
         )
@@ -345,7 +358,7 @@ async def upload_sensor_data(app, *args, **kwargs):
 
     # pm25 = pm25Raw,
     # pm10 = pm10Raw,
-    # deviceID = SENSE_HAT.get_ID(DEF_ID_PREFIX)
+    # deviceID = appRT.sensors['Enviro'].get_ID(DEF_ID_PREFIX)
 
     await asyncio.gather(*sendQ)
 
@@ -366,6 +379,17 @@ def update_data(data, raw):
 
 
 def update_Enviro_LCD_display_mode(app, timeCurrent, proximity):
+    """Check 'proximity' value and uodate 'display mode'
+    
+    Unlike many other HATs, the Enviro+ add-on does not have any buttons 
+    or a joystick. However, we can use the lioght sensor to determine
+    'proximity' and then use that value to determine whether we want 
+    to switch display modes.
+
+    Args:
+        timeCurrent: time when we got proximity value
+        proximity: 'proximity' value to compare against set limit
+    """
     if (
         proximity > f451Enviro.PROX_LIMIT
         and (timeCurrent - app.displayUpdate) > f451Enviro.PROX_DEBOUNCE
@@ -374,11 +398,7 @@ def update_Enviro_LCD_display_mode(app, timeCurrent, proximity):
         app.sensors['Enviro'].update_display_mode()
         app.sensors['Enviro'].update_sleep_mode(False)
         app.displayUpdate = timeCurrent
-        print("boom!")
 
-    # if proximity > const.PROX_LIMIT and (timeCurrent - displayUpdate) > const.PROX_DEBOUNCE:
-    #     piEnviro.displMode = (piEnviro.displMode + 1) % (const.MAX_DISPL + 1)
-    #     displayUpdate = timeCurrent
 
 def update_Enviro_LCD(enviro, data, colors=None):
     """Update Enviro+ LCD depending on display mode
@@ -387,7 +407,7 @@ def update_Enviro_LCD(enviro, data, colors=None):
     for display on LCD.
 
     Args:
-        sense: hook to SenseHat object
+        enviro: hook to Enviro object
         data: full data set where we'll grab a slice from the end
         colors: (optional) custom color map
     """
@@ -406,7 +426,7 @@ def update_Enviro_LCD(enviro, data, colors=None):
 
     # Check display mode. Each mode corresponds to a data type
     # Show temperature?
-    if enviro.displMode == const.DISPL_TEMP:
+    if enviro.displMode == const.DISPL_TEMPS:
         minMax = _minMax(data.temperature.as_tuple().data)
         dataClean = f451Enviro.prep_data(data.temperature.as_tuple())
         colorMap = _get_color_map(dataClean, colors)
@@ -447,7 +467,7 @@ def update_Enviro_LCD(enviro, data, colors=None):
         colorMap = _get_color_map(dataClean, colors)
         enviro.display_as_graph(dataClean, minMax, colorMap, APP_TOPLBL_LEN)
 
-    # Show nh3?
+    # Show nh3 / ammonia?
     elif enviro.displMode == const.DISPL_NH3:
         minMax = _minMax(data.nh3.as_tuple().data)
         dataClean = f451Enviro.prep_data(data.nh3.as_tuple())
@@ -482,7 +502,7 @@ def update_Enviro_LCD(enviro, data, colors=None):
         colorMap = _get_color_map(dataClean, colors)
         enviro.display_as_graph(dataClean, minMax, colorMap, APP_TOPLBL_LEN)
 
-    # Show sparkles? :-)
+    # Or ... display sparkles :-)
     else:
         enviro.display_sparkle()
 
@@ -530,35 +550,14 @@ def init_cli_parser(appName, appVersion, setDefaults=True):
         default=-1,
         help='number of uploads before exiting',
     )
+    parser.add_argument(
+        '--dmode',
+        action='store',
+        help='display mode',
+    )
 
     return parser
     # fmt: on
-
-
-def hurry_up_and_wait(app, cliUI=False):
-    """Display wait messages and progress bars
-
-    This function comes into play if we have longer wait times
-    between sensor reads, etc. For example, we may want to read
-    temperature sensors every second. But we may want to wait a
-    minute or more to run internet speed tests.
-
-    Args:
-        app: hook to app runtime object
-        cliUI: 'bool' indicating whether user wants full UI
-    """
-    if app.ioWait > APP_MIN_PROG_WAIT:
-        app.update_progress(cliUI, None, 'Waiting for sensors')
-        for i in range(app.ioWait):
-            app.update_progress(cliUI, int(i / app.ioWait * 100))
-            time.sleep(APP_WAIT_1SEC)
-        app.update_action(cliUI, None)
-    else:
-        time.sleep(app.ioWait)
-
-    # Update Sense HAT prog bar as needed with time remaining
-    # until next data upload
-    app.sensors['Enviro'].display_progress(app.timeSinceUpdate / app.uploadDelay)
 
 
 def collect_data(app, data, cpuTempsQ, timeCurrent, cliUI=False):
@@ -666,16 +665,6 @@ def collect_data(app, data, cpuTempsQ, timeCurrent, cliUI=False):
 
     # Check 'proximity' value to determine when to toggle display mode
     update_Enviro_LCD_display_mode(app, timeCurrent, proximity)
-    # if (
-    #     proximity > f451Enviro.PROX_LIMIT
-    #     and (timeCurrent - app.displayUpdate) > f451Enviro.PROX_DEBOUNCE
-    # ):
-    #     # app.sensors['Enviro'].displMode = (app.sensors['Enviro'].displMode + 1) % (const.MAX_DISPL + 1)
-    #     app.sensors['Enviro'].update_display_mode()
-    #     app.sensors['Enviro'].update_sleep_mode(False)
-    #     app.displayUpdate = timeCurrent
-        # print("boom!")
-        # assert False
 
     # Update data set and display to terminal as needed
     update_data(data, {
@@ -690,9 +679,7 @@ def collect_data(app, data, cpuTempsQ, timeCurrent, cliUI=False):
     })
 
     update_Enviro_LCD(app.sensors['Enviro'], data)
-    app.update_data(
-        cliUI, f451CLIUI.prep_data(data.as_dict(), APP_DATA_TYPES, APP_DELTA_FACTOR)
-    )
+    app.update_data(cliUI, f451CLIUI.prep_data(data.as_dict(), APP_DATA_TYPES, APP_DELTA_FACTOR))
 
     return exitApp
 
@@ -729,7 +716,7 @@ def main_loop(app, data, cliUI=False):
             )
             # fmt: on
 
-            # Update Sense HAT prog bar as needed
+            # Update Enviro+ prog bar as needed
             app.sensors['Enviro'].display_progress(app.timeSinceUpdate / app.uploadDelay)
 
             # Do we need to wait for next sensor read?
@@ -742,9 +729,9 @@ def main_loop(app, data, cliUI=False):
                 exitApp = collect_data(app, data, cpuTempsQ, timeCurrent, cliUI)
                 waitForSensor = max(app.ioWait, APP_MIN_PROG_WAIT)
                 if app.ioWait > APP_MIN_PROG_WAIT:
-                    app.update_progress(cliUI, None, 'Waiting for speed test')
+                    app.update_progress(cliUI, None, 'Waiting for sensor')
 
-            # Update UI and SenseHAT LED as needed even when we're just waiting for 
+            # Update UI and Enviro+ LCD as needed even when we're just waiting for 
             # next upload. This means that more sparkles are generated as well
             app.update_data(
                 cliUI, f451CLIUI.prep_data(data.as_dict(), APP_DATA_TYPES, APP_DELTA_FACTOR)
@@ -823,16 +810,20 @@ def main(cliArgs=None):  # sourcery skip: extract-method
 
     try:
         # Initialize device instance which includes all sensors
-        # and LED display on Sense HAT. Also initialize joystick
-        # events and set 'sleep' and 'display' modes.
+        # and LCD on Enviro+. Also set 'sleep' and 'display' modes.
         appRT.add_sensor('Enviro', f451Enviro.Enviro)
-        appRT.sensors['Enviro'].display_init(**APP_DISPLAY_MODES)
+        appRT.sensors['Enviro'].add_displ_modes(APP_DISPL_MODES)
         appRT.sensors['Enviro'].update_sleep_mode(cliArgs.noLCD)
         appRT.sensors['Enviro'].displProgress = cliArgs.progress
-        appRT.sensors['Enviro'].display_message(APP_NAME)
+        appRT.sensors['Enviro'].display_message(APP_NAME, COLOR_LOGO_FG, COLOR_LOGO_BG)
+
+        appRT.sensors['Enviro'].set_display_mode(
+            cliArgs.dmode or appRT.config.get(f451Enviro.KWD_DISPLAY)
+        )
 
     except KeyboardInterrupt:
         appRT.sensors['Enviro'].display_reset()
+        appRT.sensors['Enviro'].display_off()
         print(f'{APP_NAME} (v{APP_VERSION}) - Session terminated by user')
         sys.exit(0)
 
