@@ -411,7 +411,6 @@ def update_Enviro_LCD(enviro, data, colors=None):
         data: full data set where we'll grab a slice from the end
         colors: (optional) custom color map
     """
-
     def _minMax(data):
         """Create min/max based on all collecxted data
 
@@ -499,8 +498,8 @@ def update_Enviro_LCD(enviro, data, colors=None):
     elif enviro.displMode == const.DISPL_ALL:
         displayData = []
         for dataSet in data.as_list():
-            minMax = _minMax(dataSet.as_tuple().data)
-            dataClean = f451Enviro.prep_data(dataSet.as_tuple())
+            minMax = _minMax(dataSet.data)
+            dataClean = f451Enviro.prep_data(f451EnviroData.DataUnit(**dataSet))
             colorMap = _get_color_map(dataClean, colors)
             displayData.append({
                 'dataPt': dataClean.data[-1],
