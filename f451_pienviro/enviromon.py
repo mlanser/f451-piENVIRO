@@ -497,10 +497,19 @@ def update_Enviro_LCD(enviro, data, colors=None):
 
     # Show everything on one screen?
     elif enviro.displMode == const.DISPL_ALL:
-        minMax = _minMax(data.rndpcnt.as_tuple().data)
-        dataClean = f451Enviro.prep_data(data.rndpcnt.as_tuple())
-        colorMap = _get_color_map(dataClean, colors)
-        enviro.display_as_graph(dataClean, minMax, colorMap, APP_TOPLBL_LEN)
+        displayData = []
+        for dataSet in data.as_list():
+            minMax = _minMax(dataSet.as_tuple().data)
+            dataClean = f451Enviro.prep_data(dataSet.as_tuple())
+            colorMap = _get_color_map(dataClean, colors)
+            displayData.append({
+                'dataPt': dataClean.data[-1],
+                'label': dataClean.label,
+                'unit': dataClean.unit,
+                'limits': dataClean.limits,
+                'colorMap': colorMap
+            })
+        enviro.display_as_text(displayData, 12)
 
     # Or ... display sparkles :-)
     else:
