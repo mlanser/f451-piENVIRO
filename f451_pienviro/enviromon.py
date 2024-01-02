@@ -395,7 +395,7 @@ def update_Enviro_LCD_display_mode(app, timeCurrent, proximity):
         and (timeCurrent - app.displayUpdate) > f451Enviro.PROX_DEBOUNCE
     ):
         # app.sensors['Enviro'].displMode = (app.sensors['Enviro'].displMode + 1) % (const.MAX_DISPL + 1)
-        app.sensors['Enviro'].update_display_mode()
+        app.sensors['Enviro'].set_display_mode(1)
         app.sensors['Enviro'].update_sleep_mode(False)
         app.displayUpdate = timeCurrent
 
@@ -814,7 +814,7 @@ def main(cliArgs=None):  # sourcery skip: extract-method
         appRT.add_sensor('Enviro', f451Enviro.Enviro)
         appRT.sensors['Enviro'].display_init()
         appRT.sensors['Enviro'].add_displ_modes(APP_DISPL_MODES)
-        appRT.sensors['Enviro'].set_display_mode(cliArgs.noLCD)
+        appRT.sensors['Enviro'].update_sleep_mode(cliArgs.noLCD)
         appRT.sensors['Enviro'].displProgress = cliArgs.progress
         appRT.sensors['Enviro'].display_message(APP_NAME, COLOR_LOGO_FG, COLOR_LOGO_BG)
 
