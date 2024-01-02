@@ -812,6 +812,7 @@ def main(cliArgs=None):  # sourcery skip: extract-method
         # Initialize device instance which includes all sensors
         # and LCD on Enviro+. Also set 'sleep' and 'display' modes.
         appRT.add_sensor('Enviro', f451Enviro.Enviro)
+        appRT.sensors['Enviro'].display_init()
         appRT.sensors['Enviro'].add_displ_modes(APP_DISPL_MODES)
         appRT.sensors['Enviro'].update_sleep_mode(cliArgs.noLCD)
         appRT.sensors['Enviro'].displProgress = cliArgs.progress
