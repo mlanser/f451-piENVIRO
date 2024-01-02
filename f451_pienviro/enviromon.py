@@ -498,7 +498,7 @@ def update_Enviro_LCD(enviro, data, colors=None):
     elif enviro.displMode == const.DISPL_ALL:
         displayData = []
         for dataSet in data.as_list():
-            minMax = _minMax(dataSet.data)
+            minMax = _minMax(dataSet['data'])
             dataClean = f451Enviro.prep_data(f451EnviroData.DataUnit(**dataSet))
             colorMap = _get_color_map(dataClean, colors)
             displayData.append({
