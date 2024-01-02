@@ -508,7 +508,7 @@ def update_Enviro_LCD(enviro, data, colors=None):
                 'limits': dataClean.limits,
                 'colorMap': colorMap
             })
-        enviro.display_as_text(displayData, 12)
+        enviro.display_as_text(displayData, APP_TOPLBL_LEN)
 
     # Or ... display sparkles :-)
     else:
