@@ -824,8 +824,11 @@ def main(cliArgs=None):  # sourcery skip: extract-method
         appRT.sensors['Enviro'].add_displ_modes(APP_DISPL_MODES)
         appRT.sensors['Enviro'].update_sleep_mode(cliArgs.noLCD)
         appRT.sensors['Enviro'].displProgress = cliArgs.progress
+
+
         appRT.sensors['Enviro'].display_message(APP_NAME, COLOR_LOGO_FG, COLOR_LOGO_BG)
         time.sleep(2 * APP_WAIT_1SEC)
+        appRT.sensors['Enviro'].display_blank()
 
         appRT.sensors['Enviro'].set_display_mode(
             cliArgs.dmode or appRT.config.get(f451Enviro.KWD_DISPLAY)
